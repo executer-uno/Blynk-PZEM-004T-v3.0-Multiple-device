@@ -34,14 +34,13 @@
 
 #include <ArduinoOTA.h>
 //#include <BlynkSimpleEsp8266.h>
-#include <SimpleTimer.h>
+//#include <SimpleTimer.h>
 //#include <ModbusMaster.h>
 #include <ESP8266WiFi.h>
 
 
 #include <SoftwareSerial.h>  //  ( NODEMCU ESP8266 )
-SoftwareSerial pzemSerial(RX_PIN_NODEMCU, TX_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM 
-//SoftwareSerial pzem(D7,D8);  // (RX,TX) connect to TX,RX of PZEM
+SoftwareSerial pzemSerial(RX_PIN_NODEMCU, TX_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
 #include <ModbusMaster.h>
 
 /*

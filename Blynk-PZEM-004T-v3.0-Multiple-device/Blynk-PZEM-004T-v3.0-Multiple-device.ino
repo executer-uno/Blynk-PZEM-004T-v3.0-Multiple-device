@@ -33,9 +33,9 @@
 #include "my_secret.h"              // <<--- COMMENT-OUT or REMOVE this line before you use. This is my personal settings.
 
 #include <ArduinoOTA.h>
-#include <BlynkSimpleEsp8266.h>
+//#include <BlynkSimpleEsp8266.h>
 #include <SimpleTimer.h>
-#include <ModbusMaster.h>
+//#include <ModbusMaster.h>
 #include <ESP8266WiFi.h>
 
 
@@ -60,7 +60,7 @@ static uint8_t pzemSlave2Addr = PZEM_SLAVE_2_ADDRESS;
 ModbusMaster node1;
 ModbusMaster node2;
 
-BlynkTimer timer;
+//BlynkTimer timer;
 
 double voltage_usage_1 = 0; 
 double current_usage_1 = 0;
@@ -116,16 +116,11 @@ void setup() {
 
 
 
-#if defined(USE_LOCAL_SERVER)
-  Blynk.begin(AUTH, WIFI_SSID, WIFI_PASS, SERVER, PORT);
-#else
-  Blynk.begin(AUTH, WIFI_SSID, WIFI_PASS);
-#endif
+
   ArduinoOTA.setHostname(OTA_HOSTNAME);
   ArduinoOTA.begin();
 
 
-  timer.setInterval(10000L, sendtoBlynk); // send values blynk server every 10 sec
 
   //delay(1000);
 
@@ -133,25 +128,7 @@ void setup() {
 
 
 
-//Here we are sending data to blynk 
-void sendtoBlynk() {
-          
-  Blynk.virtualWrite(vPIN_VOLTAGE_1,               voltage_usage_1);
-  Blynk.virtualWrite(vPIN_CURRENT_USAGE_1,         current_usage_1);
-  Blynk.virtualWrite(vPIN_ACTIVE_POWER_1,          active_power_1);
-  Blynk.virtualWrite(vPIN_ACTIVE_ENERGY_1,         active_energy_1);
-  Blynk.virtualWrite(vPIN_FREQUENCY_1,             frequency_1);
-  Blynk.virtualWrite(vPIN_POWER_FACTOR_1,          power_factor_1);
-  Blynk.virtualWrite(vPIN_OVER_POWER_ALARM_1,      over_power_alarm_1);
 
-  Blynk.virtualWrite(vPIN_VOLTAGE_2,               voltage_usage_2);
-  Blynk.virtualWrite(vPIN_CURRENT_USAGE_2,         current_usage_2);
-  Blynk.virtualWrite(vPIN_ACTIVE_POWER_2,          active_power_2);
-  Blynk.virtualWrite(vPIN_ACTIVE_ENERGY_2,         active_energy_2);
-  Blynk.virtualWrite(vPIN_FREQUENCY_2,             frequency_2);
-  Blynk.virtualWrite(vPIN_POWER_FACTOR_2,          power_factor_2);
-  Blynk.virtualWrite(vPIN_OVER_POWER_ALARM_2,      over_power_alarm_2);  
-}
 
 
 void pzemdevice1()
@@ -281,9 +258,8 @@ void changeAddress(uint8_t OldslaveAddr, uint8_t NewslaveAddr)
 
 
 void loop() {
-  Blynk.run();
+
   ArduinoOTA.handle();
-  timer.run();
   pzemdevice1();
   pzemdevice2();
   delay(1000);

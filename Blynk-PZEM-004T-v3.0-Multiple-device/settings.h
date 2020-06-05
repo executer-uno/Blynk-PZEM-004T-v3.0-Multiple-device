@@ -9,17 +9,18 @@
  *        NodeMCU Pin Assignment
  **************************************************/
 
-#define RX_PIN_NODEMCU     D5        // Nodemcu pin, used has RX pin
-#define TX_PIN_NODEMCU     D6        // Nodemcu pin, used has TX pin
-
+#define RX1_PIN_NODEMCU     D5        // Nodemcu pin, used has RX pin
+#define TX1_PIN_NODEMCU     D6        // Nodemcu pin, used has TX pin
+#define RX2_PIN_NODEMCU     D1        // Nodemcu pin, used has RX pin
+#define TX2_PIN_NODEMCU     D2        // Nodemcu pin, used has TX pin
 /***************************************************
  *        PZEM address value assignment 
  **************************************************/
 
  #define PZEM_SLAVE_1_ADDRESS     0x02    // Make sure you assign address to pzem first before you use
  #define PZEM_SLAVE_2_ADDRESS     0x03
- #define PZEM_SLAVE_3_ADDRESS     0x04
- #define PZEM_SLAVE_4_ADDRESS     0x05
+ #define PZEM_SLAVE_3_ADDRESS     0x16
+ #define PZEM_SLAVE_4_ADDRESS     0x16
  
 /***************************************************
  *        Blynk Virtual Pin Assignment

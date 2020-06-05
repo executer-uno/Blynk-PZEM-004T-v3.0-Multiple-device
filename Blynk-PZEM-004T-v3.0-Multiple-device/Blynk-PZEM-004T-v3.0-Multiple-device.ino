@@ -34,6 +34,8 @@
 //#include "secret.h"               // <<--- UNCOMMENT this before you use and change values on config.h tab
 #include "my_secret.h"              // <<--- COMMENT-OUT or REMOVE this line before you use. This is my personal settings.
 
+#include "MyModbusMaster.h"
+
 #include <ArduinoOTA.h>
 //#include <BlynkSimpleEsp8266.h>
 //#include <SimpleTimer.h>
@@ -42,8 +44,8 @@
 
 
 #include <SoftwareSerial.h>  //  ( NODEMCU ESP8266 )
-SoftwareSerial pzemSerial(RX_PIN_NODEMCU, TX_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
-#include <ModbusMaster.h>
+SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
+SoftwareSerial pzem2Serial(RX2_PIN_NODEMCU, TX2_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
 
 /*
    This is the address of Pzem devices on the network. Each pzem device has to set unique
@@ -57,13 +59,11 @@ static uint8_t pzemSlave2Addr = PZEM_SLAVE_2_ADDRESS;
 static uint8_t pzemSlave3Addr = PZEM_SLAVE_3_ADDRESS;
 static uint8_t pzemSlave4Addr = PZEM_SLAVE_4_ADDRESS;
 
-
 //ModbusMaster node;
-
-ModbusMaster node1;
-ModbusMaster node2;
-ModbusMaster node3;
-ModbusMaster node4;
+MyModbusMaster node1;
+MyModbusMaster node2;
+MyModbusMaster node3;
+MyModbusMaster node4;
 
 //BlynkTimer timer;
 
@@ -91,13 +91,14 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);    // turn the LED ON by making the voltage HIGH
 
-  pzemSerial.begin(9600);
+  pzem1Serial.begin(9600);
+  pzem2Serial.begin(9600);
 
   // start Modbus/RS-485 serial communication
-  node1.begin(pzemSlave1Addr, pzemSerial);
-  node2.begin(pzemSlave2Addr, pzemSerial);
-  node3.begin(pzemSlave3Addr, pzemSerial);
-  node4.begin(pzemSlave4Addr, pzemSerial);
+  node1.begin(pzemSlave1Addr, pzem1Serial);
+  node2.begin(pzemSlave2Addr, pzem1Serial);
+  node3.begin(pzemSlave3Addr, pzem1Serial);
+  node4.begin(pzemSlave4Addr, pzem2Serial);
 
   digitalWrite(LED_BUILTIN, HIGH);    // turn the LED ON by making the voltage HIGH
 
@@ -119,7 +120,8 @@ void setup() {
 
   */
    
-  //changeAddress(0x01, 0x05);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
+  //changeAddress(0x04, 0x14);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
+  //changeAddress(0x06, 0x16);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
 
 
   //resetEnergy(0x01);
@@ -163,19 +165,14 @@ void setup() {
   Serial.println(WiFi.localIP());
   Serial.println();
   delay(1000);
-
 }
 
-
-
-
-
-
-void pzemdevice(ModbusMaster *node)
+void pzemdevice(MyModbusMaster *node)
 {
   // PZEM Device data fetching
   Serial.println("===================================================="); 
-  Serial.println("Now checking Modbus x");
+  Serial.print("Now checking Modbus "); Serial.println(node->getSlaveID());
+
   uint8_t result1;
 
 
@@ -193,7 +190,7 @@ void pzemdevice(ModbusMaster *node)
     power_factor_1       = (node->getResponseBuffer(0x08) / 100.0f);
     over_power_alarm_1   = (node->getResponseBuffer(0x09));
 
-    Serial.println("Modbus x Data");
+    Serial.print("Modbus "); Serial.print(node->getSlaveID()); Serial.println(" slave");
     Serial.print("VOLTAGE:           ");   Serial.println(voltage_usage_1);   // V
     Serial.print("CURRENT_USAGE:     ");   Serial.println(current_usage_1, 3);  //  A
     Serial.print("ACTIVE_POWER:      ");   Serial.println(active_power_1);   //  W
@@ -203,14 +200,10 @@ void pzemdevice(ModbusMaster *node)
     Serial.print("OVER_POWER_ALARM:  ");   Serial.println(over_power_alarm_1, 0);
     Serial.println("====================================================");
   }
-
   else {
-    Serial.println("Failed to read modbus x");
-   
+    Serial.print("Failed to read modbus "); Serial.println(node->getSlaveID());
   }
 }
-
-
 
 void resetEnergy(uint8_t slaveAddr) {
   //The command to reset the slave's energy is (total 4 bytes):
@@ -220,16 +213,14 @@ void resetEnergy(uint8_t slaveAddr) {
   u16CRC = crc16_update(u16CRC, slaveAddr);
   u16CRC = crc16_update(u16CRC, resetCommand);
   Serial.println("Resetting Energy");
-  pzemSerial.write(slaveAddr);
-  pzemSerial.write(resetCommand);
-  pzemSerial.write(lowByte(u16CRC));
-  pzemSerial.write(highByte(u16CRC));
+  pzem1Serial.write(slaveAddr);
+  pzem1Serial.write(resetCommand);
+  pzem1Serial.write(lowByte(u16CRC));
+  pzem1Serial.write(highByte(u16CRC));
   delay(1000);
 }
 
-
 //function to change/assign pzem address
-
 void changeAddress(uint8_t OldslaveAddr, uint8_t NewslaveAddr)
 {
   static uint8_t SlaveParameter = 0x06;
@@ -244,31 +235,33 @@ void changeAddress(uint8_t OldslaveAddr, uint8_t NewslaveAddr)
 
   Serial.println("Changing Slave Address");
 
-  pzemSerial.write(OldslaveAddr);
-  pzemSerial.write(SlaveParameter);
-  pzemSerial.write(highByte(registerAddress));
-  pzemSerial.write(lowByte(registerAddress));
-  pzemSerial.write(highByte(NewslaveAddr));
-  pzemSerial.write(lowByte(NewslaveAddr));
-  pzemSerial.write(lowByte(u16CRC));
-  pzemSerial.write(highByte(u16CRC));
+  pzem1Serial.write(OldslaveAddr);
+  pzem1Serial.write(SlaveParameter);
+  pzem1Serial.write(highByte(registerAddress));
+  pzem1Serial.write(lowByte(registerAddress));
+  pzem1Serial.write(highByte(NewslaveAddr));
+  pzem1Serial.write(lowByte(NewslaveAddr));
+  pzem1Serial.write(lowByte(u16CRC));
+  pzem1Serial.write(highByte(u16CRC));
   delay(1000);
 }
-
 
 void loop() {
 
   digitalWrite(LED_BUILTIN, LOW);
-  ArduinoOTA.handle();
   delay(10);
   digitalWrite(LED_BUILTIN, HIGH);
 
+  ArduinoOTA.handle();
+
   pzemdevice(&node1);
-  delay(50);
+  delay(100);
   pzemdevice(&node2);
-  delay(50);
+  delay(100);
   pzemdevice(&node3);
-  delay(50);
+  delay(100);
   pzemdevice(&node4);
-  delay(50);
+  delay(100);
+
+  yield();
 }

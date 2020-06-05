@@ -24,6 +24,8 @@
 
 */
 
+// Build in LED
+#define LED_BUILTIN 2
 
 
 //#define BLYNK_PRINT Serial        // Uncomment for debugging 
@@ -52,12 +54,16 @@ SoftwareSerial pzemSerial(RX_PIN_NODEMCU, TX_PIN_NODEMCU); // (RX,TX) NodeMCU co
 */
 static uint8_t pzemSlave1Addr = PZEM_SLAVE_1_ADDRESS; 
 static uint8_t pzemSlave2Addr = PZEM_SLAVE_2_ADDRESS;
+static uint8_t pzemSlave3Addr = PZEM_SLAVE_3_ADDRESS;
+static uint8_t pzemSlave4Addr = PZEM_SLAVE_4_ADDRESS;
 
 
 //ModbusMaster node;
 
 ModbusMaster node1;
 ModbusMaster node2;
+ModbusMaster node3;
+ModbusMaster node4;
 
 //BlynkTimer timer;
 
@@ -79,13 +85,21 @@ double over_power_alarm_2 = 0;
 
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(76800);
+
+// initialize digital LED_BUILTIN as an output.
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);    // turn the LED ON by making the voltage HIGH
 
   pzemSerial.begin(9600);
 
   // start Modbus/RS-485 serial communication
   node1.begin(pzemSlave1Addr, pzemSerial);
   node2.begin(pzemSlave2Addr, pzemSerial);
+  node3.begin(pzemSlave3Addr, pzemSerial);
+  node4.begin(pzemSlave4Addr, pzemSerial);
+
+  digitalWrite(LED_BUILTIN, HIGH);    // turn the LED ON by making the voltage HIGH
 
 
   /* 
@@ -105,7 +119,7 @@ void setup() {
 
   */
    
-  //changeAddress(0x01, 0x03);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
+  //changeAddress(0x01, 0x05);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
 
 
   //resetEnergy(0x01);
@@ -113,15 +127,42 @@ void setup() {
       //resetEnergy(pzemSlaveAddr);
   */
 
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(5000);
+    ESP.restart();
+  }
 
+  // ArduinoOTA.setPort(8266);
+  // ArduinoOTA.setPassword((const char *)"123");
 
+  ArduinoOTA.onStart([]() {
+    Serial.println("OTA Start");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
 
   ArduinoOTA.setHostname(OTA_HOSTNAME);
   ArduinoOTA.begin();
 
-
-
-  //delay(1000);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  Serial.println();
+  delay(1000);
 
 }
 
@@ -130,28 +171,29 @@ void setup() {
 
 
 
-void pzemdevice1()
+void pzemdevice(ModbusMaster *node)
 {
-  // PZEM Device 1 data fetching
+  // PZEM Device data fetching
   Serial.println("===================================================="); 
-  Serial.println("Now checking Modbus 1");
+  Serial.println("Now checking Modbus x");
   uint8_t result1;
 
+
   ESP.wdtDisable();     //disable watchdog during modbus read or else ESP crashes when no slave connected                                               
-  result1 = node1.readInputRegisters(0x0000, 10);
+  result1 = node->readInputRegisters(0x0000, 10);
   ESP.wdtEnable(1);    //enable watchdog during modbus read  
   
-  if (result1 == node1.ku8MBSuccess)
+  if (result1 == node->ku8MBSuccess)
   {
-    voltage_usage_1      = (node1.getResponseBuffer(0x00) / 10.0f);
-    current_usage_1      = (node1.getResponseBuffer(0x01) / 1000.000f);
-    active_power_1       = (node1.getResponseBuffer(0x03) / 10.0f);
-    active_energy_1      = (node1.getResponseBuffer(0x05) / 1000.0f);
-    frequency_1          = (node1.getResponseBuffer(0x07) / 10.0f);
-    power_factor_1       = (node1.getResponseBuffer(0x08) / 100.0f);
-    over_power_alarm_1   = (node1.getResponseBuffer(0x09));
+    voltage_usage_1      = (node->getResponseBuffer(0x00) / 10.0f);
+    current_usage_1      = (node->getResponseBuffer(0x01) / 1000.000f);
+    active_power_1       = (node->getResponseBuffer(0x03) / 10.0f);
+    active_energy_1      = (node->getResponseBuffer(0x05) / 1000.0f);
+    frequency_1          = (node->getResponseBuffer(0x07) / 10.0f);
+    power_factor_1       = (node->getResponseBuffer(0x08) / 100.0f);
+    over_power_alarm_1   = (node->getResponseBuffer(0x09));
 
-    Serial.println("Modbus 1 Data");
+    Serial.println("Modbus x Data");
     Serial.print("VOLTAGE:           ");   Serial.println(voltage_usage_1);   // V
     Serial.print("CURRENT_USAGE:     ");   Serial.println(current_usage_1, 3);  //  A
     Serial.print("ACTIVE_POWER:      ");   Serial.println(active_power_1);   //  W
@@ -163,50 +205,8 @@ void pzemdevice1()
   }
 
   else {
-    Serial.println("Failed to read modbus 1");
+    Serial.println("Failed to read modbus x");
    
-  }
-}
-
- void pzemdevice2()
- {
-   
-  // PZEM Device 2 data fetching
-  Serial.println("===================================================="); 
-  Serial.println("Now checking Modbus 2");
-  uint8_t result2;
-  
-  ESP.wdtDisable();
-  result2 = node2.readInputRegisters(0x0000, 10);
-  ESP.wdtEnable(1);
-  
-  if (result2 == node2.ku8MBSuccess)
-  {
-    voltage_usage_2      = (node2.getResponseBuffer(0x00) / 10.0f);
-    current_usage_2      = (node2.getResponseBuffer(0x01) / 1000.000f);
-    active_power_2       = (node2.getResponseBuffer(0x03) / 10.0f);
-    active_energy_2      = (node2.getResponseBuffer(0x05) / 1000.0f);
-    frequency_2          = (node2.getResponseBuffer(0x07) / 10.0f);
-    power_factor_2       = (node2.getResponseBuffer(0x08) / 100.0f);
-    over_power_alarm_2   = (node2.getResponseBuffer(0x09));
-
-    Serial.println("Modbus 2 Data");
-    Serial.print("VOLTAGE:           ");   Serial.println(voltage_usage_2);   // V
-    Serial.print("CURRENT_USAGE:     ");   Serial.println(current_usage_2, 3);  //  A
-    Serial.print("ACTIVE_POWER:      ");   Serial.println(active_power_2);   //  W
-    Serial.print("ACTIVE_ENERGY:     ");   Serial.println(active_energy_2, 3);  // kWh
-    Serial.print("FREQUENCY:         ");   Serial.println(frequency_2);    // Hz
-    Serial.print("POWER_FACTOR:      ");   Serial.println(power_factor_2);
-    Serial.print("OVER_POWER_ALARM:  ");   Serial.println(over_power_alarm_2, 0);
-    Serial.println("====================================================");
-
-    
-  }
-
-  else {
-    Serial.println("Failed to read modbus 2");
-    //delay(6000);
-
   }
 }
 
@@ -258,8 +258,17 @@ void changeAddress(uint8_t OldslaveAddr, uint8_t NewslaveAddr)
 
 void loop() {
 
+  digitalWrite(LED_BUILTIN, LOW);
   ArduinoOTA.handle();
-  pzemdevice1();
-  pzemdevice2();
-  delay(1000);
+  delay(10);
+  digitalWrite(LED_BUILTIN, HIGH);
+
+  pzemdevice(&node1);
+  delay(50);
+  pzemdevice(&node2);
+  delay(50);
+  pzemdevice(&node3);
+  delay(50);
+  pzemdevice(&node4);
+  delay(50);
 }

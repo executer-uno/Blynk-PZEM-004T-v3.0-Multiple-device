@@ -24,13 +24,9 @@
 
 */
 
-// Build in LED
-#define LED_BUILTIN 2
-
-
 //#define BLYNK_PRINT Serial        // Uncomment for debugging 
 
-#include "settings.h"           
+#include "Definitions.h"
 //#include "secret.h"               // <<--- UNCOMMENT this before you use and change values on config.h tab
 #include "my_secret.h"              // <<--- COMMENT-OUT or REMOVE this line before you use. This is my personal settings.
 
@@ -47,6 +43,13 @@
 SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
 //SoftwareSerial pzem2Serial(RX2_PIN_NODEMCU, TX2_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
 
+
+#include "lib/HTTPSRedirect.h"
+
+
+namespace cfg {
+	int	debug 			= DEBUG;
+}
 /*
    This is the address of Pzem devices on the network. Each pzem device has to set unique
    address when we are working with muliple pzem device (multiple modbus devices/multiple slaves)
@@ -59,29 +62,28 @@ static uint8_t pzemSlave2Addr = PZEM_SLAVE_2_ADDRESS;
 static uint8_t pzemSlave3Addr = PZEM_SLAVE_3_ADDRESS;
 static uint8_t pzemSlave4Addr = PZEM_SLAVE_4_ADDRESS;
 
-//ModbusMaster node;
 MyModbusMaster node1;
 MyModbusMaster node2;
 MyModbusMaster node3;
 MyModbusMaster node4;
 
-//BlynkTimer timer;
 
-double voltage_usage_1 = 0; 
-double current_usage_1 = 0;
-double active_power_1 = 0;
-double active_energy_1 = 0;
-double frequency_1 = 0;
-double power_factor_1 = 0; 
-double over_power_alarm_1 = 0;
- 
-double voltage_usage_2 = 0;
-double current_usage_2 = 0;
-double active_power_2 = 0;
-double active_energy_2 = 0;
-double frequency_2 = 0;
-double power_factor_2 = 0; 
-double over_power_alarm_2 = 0;
+Meter	Meter1;
+Meter	Meter2;
+Meter	Meter3;
+Meter	Meter4;
+
+
+
+const char *GScriptId = GSHEET_ID;
+const char* host = "script.google.com";
+const int 	httpsPort = 443;
+
+String url_read  = String("/macros/s/") + GScriptId + "/exec?read";		// Write to Google Spreadsheet
+String url_write = String("/macros/s/") + GScriptId + "/exec?write";				// Read from Google Spreadsheet
+String payload_base =	"{\"command\": \"appendRow\", \"sheet_name\": \"DATA\", \"values\": ";
+HTTPSRedirect* client = nullptr;
+const char data_first_part[] PROGMEM = "{\"sensordatavalues\":{";
 
 
 void setup() {
@@ -167,14 +169,13 @@ void setup() {
   delay(1000);
 }
 
-void pzemdevice(MyModbusMaster *node)
+void pzemdevice(MyModbusMaster *node, Meter *Meter1)
 {
   // PZEM Device data fetching
-  Serial.println("===================================================="); 
+  Serial.println("====================================================");
   Serial.print("Now checking Modbus "); Serial.println(node->getSlaveID());
 
   uint8_t result1;
-
 
   ESP.wdtDisable();     //disable watchdog during modbus read or else ESP crashes when no slave connected                                               
   result1 = node->readInputRegisters(0x0000, 10);
@@ -182,26 +183,34 @@ void pzemdevice(MyModbusMaster *node)
   
   if (result1 == node->ku8MBSuccess)
   {
-    voltage_usage_1      = (node->getResponseBuffer(0x00) / 10.0f);
-    current_usage_1      = (node->getResponseBuffer(0x01) / 1000.000f);
-    active_power_1       = (node->getResponseBuffer(0x03) / 10.0f);
-    active_energy_1      = (node->getResponseBuffer(0x05) / 1000.0f);
-    frequency_1          = (node->getResponseBuffer(0x07) / 10.0f);
-    power_factor_1       = (node->getResponseBuffer(0x08) / 100.0f);
-    over_power_alarm_1   = (node->getResponseBuffer(0x09));
-
+	double voltage_usage      = (node->getResponseBuffer(0x00) / 10.0f);
+	double current_usage      = (node->getResponseBuffer(0x01) / 1000.000f);
+	double active_power       = (node->getResponseBuffer(0x03) / 10.0f);
+	double active_energy      = (node->getResponseBuffer(0x05) / 1000.0f);
+	double frequency          = (node->getResponseBuffer(0x07) / 10.0f);
+	double power_factor       = (node->getResponseBuffer(0x08) / 100.0f);
+	double over_power_alarm   = (node->getResponseBuffer(0x09));
+/*
     Serial.print("Modbus "); Serial.print(node->getSlaveID()); Serial.println(" slave");
-    Serial.print("VOLTAGE:           ");   Serial.println(voltage_usage_1);   // V
-    Serial.print("CURRENT_USAGE:     ");   Serial.println(current_usage_1, 3);  //  A
-    Serial.print("ACTIVE_POWER:      ");   Serial.println(active_power_1);   //  W
+    Serial.print("VOLTAGE:           ");   Serial.println(voltage_usage_1);   	// V
+    Serial.print("CURRENT_USAGE:     ");   Serial.println(current_usage_1, 3);  // A
+    Serial.print("ACTIVE_POWER:      ");   Serial.println(active_power_1);   	// W
     Serial.print("ACTIVE_ENERGY:     ");   Serial.println(active_energy_1, 3);  // kWh
-    Serial.print("FREQUENCY:         ");   Serial.println(frequency_1);    // Hz
+    Serial.print("FREQUENCY:         ");   Serial.println(frequency_1);    		// Hz
     Serial.print("POWER_FACTOR:      ");   Serial.println(power_factor_1);
     Serial.print("OVER_POWER_ALARM:  ");   Serial.println(over_power_alarm_1, 0);
     Serial.println("====================================================");
+*/
+    Meter1->VOLTAGE.NewMeas(		voltage_usage);
+    Meter1->CURRENT_USAGE.NewMeas(	current_usage);
+    Meter1->ACTIVE_POWER.NewMeas(	active_power);
+    Meter1->ACTIVE_ENERGY.NewMeas(	active_energy);
+    Meter1->FREQUENCY.NewMeas(		frequency);
+    Meter1->POWER_FACTOR.NewMeas(	power_factor);
   }
   else {
     Serial.print("Failed to read modbus "); Serial.println(node->getSlaveID());
+    Meter1->CRCError();
   }
 }
 
@@ -254,14 +263,98 @@ void loop() {
 
   ArduinoOTA.handle();
 
-  pzemdevice(&node1);
-  delay(100);
-  pzemdevice(&node2);
-  delay(100);
-  pzemdevice(&node3);
-  delay(100);
-  pzemdevice(&node4);
-  delay(100);
+  pzemdevice(&node1, &Meter1);
+  pzemdevice(&node2, &Meter2);
+  pzemdevice(&node3, &Meter3);
+  pzemdevice(&node4, &Meter4);
 
+  Send2GSheets();
+
+  delay(10000);
   yield();
 }
+
+
+void Send2GSheets(){
+	// Connect to spreadsheet
+
+	client = new HTTPSRedirect(httpsPort);
+	client->setPrintResponseBody(false);
+	client->setContentTypeHeader("application/json");
+
+	delay(50);  // one tick delay (1ms) in between reads for stability
+	debug_out(F("WWW: Client object created"), 											DEBUG_MED_INFO, 1);
+
+	if (client != nullptr){
+		if (!client->connected()){
+
+			// Try to connect for a maximum of 1 times
+			for (int i=0; i<1; i++){
+
+				debug_out(F("WWW: Calling Client->connect"), 							DEBUG_MED_INFO, 1);
+				delay(50);
+
+				int retval = client->connect(host, httpsPort);
+				if (retval == 1) {
+					 break;
+				}
+				else {
+					debug_out(F("Connection failed. Retrying..."), 						DEBUG_WARNING, 1);
+					delay(50);
+					Serial.println(client->getResponseBody() );
+				}
+			}
+		}
+	}
+	else{
+		debug_out(F("Error creating client object!"), 									DEBUG_ERROR, 1);
+	}
+	if (!client->connected()){
+		debug_out(F("Connection failed. Stand by till next period"), 					DEBUG_ERROR, 1);
+	}
+	else
+	{
+		debug_out(F("WWW: Client object requests to Spreadsheet"), 						DEBUG_MED_INFO, 1);
+
+		String  data			= "";
+
+			// GPS data
+			debug_out("WWW: Prepare JSON.",												DEBUG_MED_INFO, 1);
+
+			data = FPSTR(data_first_part);
+
+			data += Var2Json(F("M1"),		Meter1.GetJson());
+			data += Var2Json(F("M2"),		Meter2.GetJson());
+			data += Var2Json(F("M3"),		Meter3.GetJson());
+			data += Var2Json(F("M4"),		Meter4.GetJson());
+
+			data += "}";
+
+			// prepare fo gscript
+			data.remove(0, 1);
+
+			data.replace(",}","}");
+
+			data = payload_base + data;
+
+			debug_out(F("WWW: Send from buffer to spreadsheet. Payload prepared:"), 				DEBUG_MED_INFO, 1);
+			debug_out(data, 																		DEBUG_MED_INFO, 1);
+
+
+		if(client->POST(url_write, host, data)){
+			debug_out(F("Spreadsheet updated"), DEBUG_MIN_INFO, 1);
+		}
+		else{
+			debug_out(F("Spreadsheet update fails: "), DEBUG_MIN_INFO, 1);
+		}
+	}
+
+	// delete HTTPSRedirect object
+	delete client;
+	client = nullptr;
+
+	debug_out(F("WWW: Client object deleted"), 											DEBUG_MED_INFO, 1);
+
+}
+
+

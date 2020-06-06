@@ -45,7 +45,7 @@
 
 #include <SoftwareSerial.h>  //  ( NODEMCU ESP8266 )
 SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
-SoftwareSerial pzem2Serial(RX2_PIN_NODEMCU, TX2_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
+//SoftwareSerial pzem2Serial(RX2_PIN_NODEMCU, TX2_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
 
 /*
    This is the address of Pzem devices on the network. Each pzem device has to set unique
@@ -92,13 +92,13 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);    // turn the LED ON by making the voltage HIGH
 
   pzem1Serial.begin(9600);
-  pzem2Serial.begin(9600);
+  //pzem2Serial.begin(9600);
 
   // start Modbus/RS-485 serial communication
   node1.begin(pzemSlave1Addr, pzem1Serial);
   node2.begin(pzemSlave2Addr, pzem1Serial);
   node3.begin(pzemSlave3Addr, pzem1Serial);
-  node4.begin(pzemSlave4Addr, pzem2Serial);
+  node4.begin(pzemSlave4Addr, pzem1Serial);
 
   digitalWrite(LED_BUILTIN, HIGH);    // turn the LED ON by making the voltage HIGH
 
@@ -121,7 +121,7 @@ void setup() {
   */
    
   //changeAddress(0x04, 0x14);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
-  //changeAddress(0x06, 0x16);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
+  //changeAddress(0x16, 0x04);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
 
 
   //resetEnergy(0x01);

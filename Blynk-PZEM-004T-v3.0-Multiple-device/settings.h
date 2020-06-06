@@ -19,8 +19,8 @@
 
  #define PZEM_SLAVE_1_ADDRESS     0x02    // Make sure you assign address to pzem first before you use
  #define PZEM_SLAVE_2_ADDRESS     0x03
- #define PZEM_SLAVE_3_ADDRESS     0x16
- #define PZEM_SLAVE_4_ADDRESS     0x16
+ #define PZEM_SLAVE_3_ADDRESS     0x04
+ #define PZEM_SLAVE_4_ADDRESS     0x05
  
 /***************************************************
  *        Blynk Virtual Pin Assignment

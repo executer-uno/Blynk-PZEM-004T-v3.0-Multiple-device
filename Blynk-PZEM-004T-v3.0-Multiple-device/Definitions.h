@@ -15,13 +15,6 @@
 	#define RX1_PIN_NODEMCU     D5        // Nodemcu pin, used has RX pin
 	#define TX1_PIN_NODEMCU     D6        // Nodemcu pin, used has TX pin
 
-	/***************************************************
-	 *        PZEM address value assignment
-	 **************************************************/
-	 #define PZEM_SLAVE_1_ADDRESS     0x02    // Make sure you assign address to pzem first before you use
-	 #define PZEM_SLAVE_2_ADDRESS     0x03
-	 #define PZEM_SLAVE_3_ADDRESS     0x04
-	 #define PZEM_SLAVE_4_ADDRESS     0x05
 
 	/***************************************************
 	 *        Server Settings
@@ -48,6 +41,7 @@
 		float 	avg;
 	};
 
+
 	// Single sensor measurements object
 	class measurement {
 	private:
@@ -61,7 +55,10 @@
 		String DebugRange();			// Returns string in MIN:MAX format
 		String GetJson();
 		measurement();
+		uint32_t GetCount();
+
 	};
+
 
 	// Electricity meter
 	class Meter {
@@ -82,8 +79,6 @@
 		String GetJson();
 		Meter();
 	};
-
-
 
 
 	String Float2String(const double value);

@@ -57,15 +57,16 @@ String measurement::DebugRange(){
 	return strDebug;
 }
 String measurement::GetJson(){
-	String data = "{";
 
-	data += Var2Json("MIN",	this->Measurements.min);
-	data += Var2Json("AVG",	this->Measurements.avg);
-	data += Var2Json("MAX",	this->Measurements.max);
+	String data = this->Measurements.min + String(":") + this->Measurements.avg + String(":") + this->Measurements.max;
 
-	data += "}";
 	return data;
 }
+uint32_t measurement::GetCount(){
+
+	return this->count;
+}
+
 
 String Meter::DebugCRC(){
 	String strDebug = "";
@@ -94,12 +95,14 @@ void Meter::CRCError(){
 String Meter::GetJson(){
 	String data = "{";
 
-	Var2Json(F("VOLT"),		this->VOLTAGE.GetJson()			);
-	Var2Json(F("CURR"),		this->CURRENT_USAGE.GetJson()	);
-	Var2Json(F("POWR"),		this->ACTIVE_POWER.GetJson()	);
-	Var2Json(F("ENRG"),		this->ACTIVE_ENERGY.GetJson()	);
-	Var2Json(F("FREQ"),		this->FREQUENCY.GetJson()		);
-	Var2Json(F("POWF"),		this->POWER_FACTOR.GetJson()	);
+	data += Var2Json(F("VOLT"),		this->VOLTAGE.GetJson()			);
+	data += Var2Json(F("CURR"),		this->CURRENT_USAGE.GetJson()	);
+	data += Var2Json(F("POWR"),		this->ACTIVE_POWER.GetJson()	);
+	data += Var2Json(F("ENRG"),		this->ACTIVE_ENERGY.GetJson()	);
+	data += Var2Json(F("FREQ"),		this->FREQUENCY.GetJson()		);
+	data += Var2Json(F("POWF"),		this->POWER_FACTOR.GetJson()	);
+
+	data += Var2Json(F("MCNT"),		(double)this->VOLTAGE.GetCount());
 
 	data += "}";
 
@@ -195,7 +198,7 @@ String ValueLocated2Json(const String& timestamp, const String& lat, const Strin
 String Var2Json(const String& name, const String& value) {
 	String s = F("\"{n}\":\"{v}\",");
 	String tmp = value;
-	tmp.replace("\\", "\\\\"); tmp.replace("\"", "\\\"");
+	//tmp.replace("\\", "\\\\"); tmp.replace("\"", "\\\"");
 	s.replace("{n}", name);
 	s.replace("{v}", tmp);
 	return s;

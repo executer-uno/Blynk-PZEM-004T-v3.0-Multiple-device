@@ -49,6 +49,7 @@ SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU
 
 namespace cfg {
 	int	debug 			= DEBUG;
+	int SendPeriod		= 20; 		//GSheets send period in seconds
 }
 /*
    This is the address of Pzem devices on the network. Each pzem device has to set unique
@@ -57,10 +58,10 @@ namespace cfg {
    address to each pzem device first time.
    
 */
-static uint8_t pzemSlave1Addr = PZEM_SLAVE_1_ADDRESS; 
-static uint8_t pzemSlave2Addr = PZEM_SLAVE_2_ADDRESS;
-static uint8_t pzemSlave3Addr = PZEM_SLAVE_3_ADDRESS;
-static uint8_t pzemSlave4Addr = PZEM_SLAVE_4_ADDRESS;
+static uint8_t pzemSlave1Addr;
+static uint8_t pzemSlave2Addr;
+static uint8_t pzemSlave3Addr;
+static uint8_t pzemSlave4Addr;
 
 MyModbusMaster node1;
 MyModbusMaster node2;
@@ -85,25 +86,16 @@ String payload_base =	"{\"command\": \"appendRow\", \"sheet_name\": \"DATA\", \"
 HTTPSRedirect* client = nullptr;
 const char data_first_part[] PROGMEM = "{\"sensordatavalues\":{";
 
+unsigned long	LastSend;
 
 void setup() {
   Serial.begin(76800);
 
 // initialize digital LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);    // turn the LED ON by making the voltage HIGH
+  digitalWrite(LED_BUILTIN, HIGH);    			// turn the LED ON by making the voltage HIGH
 
   pzem1Serial.begin(9600);
-  //pzem2Serial.begin(9600);
-
-  // start Modbus/RS-485 serial communication
-  node1.begin(pzemSlave1Addr, pzem1Serial);
-  node2.begin(pzemSlave2Addr, pzem1Serial);
-  node3.begin(pzemSlave3Addr, pzem1Serial);
-  node4.begin(pzemSlave4Addr, pzem1Serial);
-
-  digitalWrite(LED_BUILTIN, HIGH);    // turn the LED ON by making the voltage HIGH
-
 
   /* 
      changeAddress(OldAddress, Newaddress)
@@ -123,7 +115,6 @@ void setup() {
   */
    
   //changeAddress(0x04, 0x14);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
-  //changeAddress(0x16, 0x04);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
 
 
   //resetEnergy(0x01);
@@ -167,6 +158,19 @@ void setup() {
   Serial.println(WiFi.localIP());
   Serial.println();
   delay(1000);
+
+  SetupGSheets();
+
+  // start Modbus/RS-485 serial communication
+  digitalWrite(LED_BUILTIN, LOW);    			// turn the LED ON by making the voltage HIGH
+  node1.begin(pzemSlave1Addr, pzem1Serial);
+  node2.begin(pzemSlave2Addr, pzem1Serial);
+  node3.begin(pzemSlave3Addr, pzem1Serial);
+  node4.begin(pzemSlave4Addr, pzem1Serial);
+  digitalWrite(LED_BUILTIN, HIGH);    			// turn the LED ON by making the voltage HIGH
+
+  LastSend = millis();
+  Serial.print("====================================================\r\n\r\n\r\n\r\n\r\n");
 }
 
 void pzemdevice(MyModbusMaster *node, Meter *Meter1)
@@ -264,13 +268,21 @@ void loop() {
   ArduinoOTA.handle();
 
   pzemdevice(&node1, &Meter1);
+  delay(250);
   pzemdevice(&node2, &Meter2);
+  delay(250);
   pzemdevice(&node3, &Meter3);
+  delay(250);
   pzemdevice(&node4, &Meter4);
+  delay(250);
 
-  Send2GSheets();
+  if((millis() - LastSend)/1000 > (unsigned int)cfg::SendPeriod){
+	  debug_out(String("loop: FreeHeap=") + String(ESP.getFreeHeap()), 												DEBUG_MED_INFO, 1);
 
-  delay(10000);
+	  Send2GSheets();
+	  LastSend = millis();
+  }
+
   yield();
 }
 
@@ -283,7 +295,7 @@ void Send2GSheets(){
 	client->setContentTypeHeader("application/json");
 
 	delay(50);  // one tick delay (1ms) in between reads for stability
-	debug_out(F("WWW: Client object created"), 											DEBUG_MED_INFO, 1);
+	debug_out(F("Send2GSheets: Client object created"), 											DEBUG_MED_INFO, 1);
 
 	if (client != nullptr){
 		if (!client->connected()){
@@ -291,7 +303,7 @@ void Send2GSheets(){
 			// Try to connect for a maximum of 1 times
 			for (int i=0; i<1; i++){
 
-				debug_out(F("WWW: Calling Client->connect"), 							DEBUG_MED_INFO, 1);
+				debug_out(F("Send2GSheets: Calling Client->connect"), 							DEBUG_MED_INFO, 1);
 				delay(50);
 
 				int retval = client->connect(host, httpsPort);
@@ -299,7 +311,7 @@ void Send2GSheets(){
 					 break;
 				}
 				else {
-					debug_out(F("Connection failed. Retrying..."), 						DEBUG_WARNING, 1);
+					debug_out(F("Send2GSheets: Connection failed. Retrying..."), 						DEBUG_WARNING, 1);
 					delay(50);
 					Serial.println(client->getResponseBody() );
 				}
@@ -307,19 +319,19 @@ void Send2GSheets(){
 		}
 	}
 	else{
-		debug_out(F("Error creating client object!"), 									DEBUG_ERROR, 1);
+		debug_out(F("Send2GSheets: Error creating client object!"), 									DEBUG_ERROR, 1);
 	}
 	if (!client->connected()){
-		debug_out(F("Connection failed. Stand by till next period"), 					DEBUG_ERROR, 1);
+		debug_out(F("Send2GSheets: Connection failed. Stand by till next period"), 					DEBUG_ERROR, 1);
 	}
 	else
 	{
-		debug_out(F("WWW: Client object requests to Spreadsheet"), 						DEBUG_MED_INFO, 1);
+		debug_out(F("Send2GSheets: Client object requests to Spreadsheet"), 						DEBUG_MED_INFO, 1);
 
 		String  data			= "";
 
 			// GPS data
-			debug_out("WWW: Prepare JSON.",												DEBUG_MED_INFO, 1);
+			debug_out("Send2GSheets: Prepare JSON.",												DEBUG_MED_INFO, 1);
 
 			data = FPSTR(data_first_part);
 
@@ -334,18 +346,24 @@ void Send2GSheets(){
 			data.remove(0, 1);
 
 			data.replace(",}","}");
+			data.replace("}\"","}");
+			data.replace("\"{","{");
 
 			data = payload_base + data;
 
-			debug_out(F("WWW: Send from buffer to spreadsheet. Payload prepared:"), 				DEBUG_MED_INFO, 1);
+			debug_out(F("Send2GSheets: Send from buffer to spreadsheet. Payload prepared:"), 				DEBUG_MED_INFO, 1);
 			debug_out(data, 																		DEBUG_MED_INFO, 1);
 
-
 		if(client->POST(url_write, host, data)){
-			debug_out(F("Spreadsheet updated"), DEBUG_MIN_INFO, 1);
+			debug_out(F("Send2GSheets: Spreadsheet updated"), DEBUG_MIN_INFO, 1);
+
+			Meter1.Clear();
+			Meter2.Clear();
+			Meter3.Clear();
+			Meter4.Clear();
 		}
 		else{
-			debug_out(F("Spreadsheet update fails: "), DEBUG_MIN_INFO, 1);
+			debug_out(F("Send2GSheets: Spreadsheet update fails: "), DEBUG_MIN_INFO, 1);
 		}
 	}
 
@@ -353,8 +371,91 @@ void Send2GSheets(){
 	delete client;
 	client = nullptr;
 
-	debug_out(F("WWW: Client object deleted"), 											DEBUG_MED_INFO, 1);
+	debug_out(F("Send2GSheets Client object deleted"), 											DEBUG_MED_INFO, 1);
+
+}
+
+void SetupGSheets(){
+	// Connect to spreadsheet
+
+	client = new HTTPSRedirect(httpsPort);
+	client->setPrintResponseBody(false);
+	client->setContentTypeHeader("application/json");
+
+	debug_out(F("SetupGSheets: Client object created"), 												DEBUG_MED_INFO, 1);
+
+	if (client != nullptr){
+		if (!client->connected()){
+
+			// Try to connect for a maximum of 1 times
+			for (int i=0; i<10; i++){
+
+				debug_out(F("SetupGSheets: Calling Client->connect"), 									DEBUG_MED_INFO, 1);
+
+				int retval = client->connect(host, httpsPort);
+				if (retval == 1) {
+					 break;
+				}
+				else {
+					debug_out(F("SetupGSheets: Connection failed. Retrying..."), 						DEBUG_WARNING, 1);
+					delay(5000);
+					yield();
+					Serial.println(client->getResponseBody() );
+				}
+			}
+		}
+	}
+	else{
+		debug_out(F("SetupGSheets: Error creating client object! Reboot."), 							DEBUG_ERROR, 1);
+		Serial.flush();
+		ESP.reset();
+	}
+	if (!client->connected()){
+		debug_out(F("SetupGSheets: Connection failed. Reboot."), 										DEBUG_ERROR, 1);
+		Serial.flush();
+		ESP.reset();
+	}
+	else
+	{
+		pzemSlave1Addr = GetGSheetsRange("Addr01").toInt();
+		pzemSlave2Addr = GetGSheetsRange("Addr02").toInt();
+		pzemSlave3Addr = GetGSheetsRange("Addr03").toInt();
+		pzemSlave4Addr = GetGSheetsRange("Addr04").toInt();
+
+	}
+
+	// delete HTTPSRedirect object
+	delete client;
+	client = nullptr;
+
+	debug_out(F("SetupGSheets: Client object deleted"), 												DEBUG_MED_INFO, 1);
+
+
+	if(!pzemSlave1Addr || !pzemSlave2Addr || !pzemSlave3Addr || !pzemSlave4Addr){
+		debug_out(F("SetupGSheets: No device adresses. Reboot."), 										DEBUG_ERROR, 1);
+		Serial.flush();
+		ESP.reset();
+	}
 
 }
 
 
+String GetGSheetsRange(String Range){
+
+	debug_out(F("GetGSheetsRange: Requests data from Spreadsheet"), 									DEBUG_MED_INFO, 1);
+
+	delay(2000);
+	yield();
+
+	if(client->GET(url_read + "=" + Range, host)){
+		String str = client->getResponseBody();
+		debug_out(F("GetGSheetsRange: getResponseBody:"), 												DEBUG_MED_INFO, 0);
+		debug_out(str, 																					DEBUG_MED_INFO, 1);
+
+		return str;
+	}
+	else{
+		debug_out(F("GetGSheetsRange: GET data fails. "), DEBUG_MIN_INFO, 1);
+	}
+	return "";
+}

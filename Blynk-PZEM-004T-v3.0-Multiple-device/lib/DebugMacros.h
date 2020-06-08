@@ -3,9 +3,9 @@
 
 #pragma once
 // un-comment this line to print the debugging statements
-//#define DEBUG_HTTPS
+//#define HTTPS_DEBUG
 
-#ifdef DEBUG_HTTPS
+#ifdef HTTPS_DEBUG
   #define DPRINT(...)    Serial.print(__VA_ARGS__)
   #define DPRINTLN(...)  Serial.println(__VA_ARGS__)
 #else

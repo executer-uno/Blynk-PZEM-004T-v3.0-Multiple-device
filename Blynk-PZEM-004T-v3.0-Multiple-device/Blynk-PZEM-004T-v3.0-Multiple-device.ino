@@ -49,7 +49,7 @@ SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU
 
 namespace cfg {
 	int	debug 			= DEBUG;
-	int SendPeriod		= 20; 		//GSheets send period in seconds
+	int SendPeriod		= 240; 		//GSheets send period in seconds
 }
 /*
    This is the address of Pzem devices on the network. Each pzem device has to set unique
@@ -87,7 +87,7 @@ const int 	httpsPort = 443;
 
 String url_read  = String("/macros/s/") + GScriptId + "/exec?read";		// Write to Google Spreadsheet
 String url_write = String("/macros/s/") + GScriptId + "/exec?write";				// Read from Google Spreadsheet
-String payload_base =	"{\"command\": \"appendRow\", \"sheet_name\": \"DATA\", \"values\": ";
+String payload_base =	"{\"command\": \"appendRow\", \"sheet_name\": \"DATA\", ";
 HTTPSRedirect* client = nullptr;
 const char data_first_part[] PROGMEM = "{\"sensordatavalues\":{";
 
@@ -335,7 +335,7 @@ void Send2GSheets(){
 			data += Var2Json(F("M3"),		Meter3.GetJson());
 			data += Var2Json(F("M4"),		Meter4.GetJson());
 
-			data += "}";
+			data += "}}";
 
 			// prepare fo gscript
 			data.remove(0, 1);

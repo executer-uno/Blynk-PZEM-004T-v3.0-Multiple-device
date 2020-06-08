@@ -63,6 +63,11 @@ static uint8_t pzemSlave2Addr;
 static uint8_t pzemSlave3Addr;
 static uint8_t pzemSlave4Addr;
 
+static uint8_t pzemSlave1Gain = 1;
+static uint8_t pzemSlave2Gain = 1;
+static uint8_t pzemSlave3Gain = 1;
+static uint8_t pzemSlave4Gain = 1;
+
 MyModbusMaster node1;
 MyModbusMaster node2;
 MyModbusMaster node3;
@@ -173,7 +178,7 @@ void setup() {
   Serial.print("====================================================\r\n\r\n\r\n\r\n\r\n");
 }
 
-void pzemdevice(MyModbusMaster *node, Meter *Meter1)
+void pzemdevice(MyModbusMaster *node, Meter *Meter1, uint8_t gain)
 {
   // PZEM Device data fetching
   Serial.println("====================================================");
@@ -183,28 +188,18 @@ void pzemdevice(MyModbusMaster *node, Meter *Meter1)
 
   ESP.wdtDisable();     //disable watchdog during modbus read or else ESP crashes when no slave connected                                               
   result1 = node->readInputRegisters(0x0000, 10);
-  ESP.wdtEnable(1);    //enable watchdog during modbus read  
+  ESP.wdtEnable(1);    	//enable watchdog during modbus read
   
   if (result1 == node->ku8MBSuccess)
   {
 	double voltage_usage      = (node->getResponseBuffer(0x00) / 10.0f);
-	double current_usage      = (node->getResponseBuffer(0x01) / 1000.000f);
-	double active_power       = (node->getResponseBuffer(0x03) / 10.0f);
-	double active_energy      = (node->getResponseBuffer(0x05) / 1000.0f);
+	double current_usage      = (node->getResponseBuffer(0x01) / (gain * 1000.000f));
+	double active_power       = (node->getResponseBuffer(0x03) / (gain * 10.0f));
+	double active_energy      = (node->getResponseBuffer(0x05) / (gain * 1000.0f));
 	double frequency          = (node->getResponseBuffer(0x07) / 10.0f);
 	double power_factor       = (node->getResponseBuffer(0x08) / 100.0f);
 	double over_power_alarm   = (node->getResponseBuffer(0x09));
-/*
-    Serial.print("Modbus "); Serial.print(node->getSlaveID()); Serial.println(" slave");
-    Serial.print("VOLTAGE:           ");   Serial.println(voltage_usage_1);   	// V
-    Serial.print("CURRENT_USAGE:     ");   Serial.println(current_usage_1, 3);  // A
-    Serial.print("ACTIVE_POWER:      ");   Serial.println(active_power_1);   	// W
-    Serial.print("ACTIVE_ENERGY:     ");   Serial.println(active_energy_1, 3);  // kWh
-    Serial.print("FREQUENCY:         ");   Serial.println(frequency_1);    		// Hz
-    Serial.print("POWER_FACTOR:      ");   Serial.println(power_factor_1);
-    Serial.print("OVER_POWER_ALARM:  ");   Serial.println(over_power_alarm_1, 0);
-    Serial.println("====================================================");
-*/
+
     Meter1->VOLTAGE.NewMeas(		voltage_usage);
     Meter1->CURRENT_USAGE.NewMeas(	current_usage);
     Meter1->ACTIVE_POWER.NewMeas(	active_power);
@@ -267,13 +262,13 @@ void loop() {
 
   ArduinoOTA.handle();
 
-  pzemdevice(&node1, &Meter1);
+  pzemdevice(&node1, &Meter1, pzemSlave1Gain);
   delay(250);
-  pzemdevice(&node2, &Meter2);
+  pzemdevice(&node2, &Meter2, pzemSlave2Gain);
   delay(250);
-  pzemdevice(&node3, &Meter3);
+  pzemdevice(&node3, &Meter3, pzemSlave3Gain);
   delay(250);
-  pzemdevice(&node4, &Meter4);
+  pzemdevice(&node4, &Meter4, pzemSlave4Gain);
   delay(250);
 
   if((millis() - LastSend)/1000 > (unsigned int)cfg::SendPeriod){
@@ -422,6 +417,10 @@ void SetupGSheets(){
 		pzemSlave3Addr = GetGSheetsRange("Addr03").toInt();
 		pzemSlave4Addr = GetGSheetsRange("Addr04").toInt();
 
+		pzemSlave1Gain = GetGSheetsRange("Gain01").toInt();
+		pzemSlave2Gain = GetGSheetsRange("Gain02").toInt();
+		pzemSlave3Gain = GetGSheetsRange("Gain03").toInt();
+		pzemSlave4Gain = GetGSheetsRange("Gain04").toInt();
 	}
 
 	// delete HTTPSRedirect object
@@ -436,7 +435,6 @@ void SetupGSheets(){
 		Serial.flush();
 		ESP.reset();
 	}
-
 }
 
 

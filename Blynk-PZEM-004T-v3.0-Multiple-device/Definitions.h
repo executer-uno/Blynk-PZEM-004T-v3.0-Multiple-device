@@ -8,6 +8,9 @@
 #ifndef DEFINITIONS_H_
 #define DEFINITIONS_H_
 
+	#include "MyModbusMaster.h"
+	#include <SoftwareSerial.h>  //  ( NODEMCU ESP8266 )
+
 
 	/***************************************************
 	 *        NodeMCU Pin Assignment
@@ -64,8 +67,12 @@
 	class Meter {
 	private:
 		uint32_t 		CRCerr;		// number of CRC errors
+		MyModbusMaster  MBNode;
+
 	public:
-		float			CRCerrRate = 0.0;	// Rate of CRC errors (%)
+		float			CRCerrRate 	= 0.0;	// Rate of CRC errors (%)
+		float 			Divisor		= 1.0;  // Measurement head gain compensation
+
 		measurement		VOLTAGE;
 		measurement		CURRENT_USAGE;
 		measurement		ACTIVE_POWER;
@@ -73,10 +80,12 @@
 		measurement		FREQUENCY;
 		measurement		POWER_FACTOR;
 
+		void GetData();					// Get new measurements from device
 		void Clear();					// Push measured values to archive
 		void CRCError();				// Increase CRC error counter
 		String DebugCRC();				// Returns CRC errors rate and measurements count
 		String GetJson();
+		void begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial);
 		Meter();
 	};
 

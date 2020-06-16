@@ -24,12 +24,12 @@
 
 */
 
+#include <Ticker.h>  //Ticker Library
 
 #include "Definitions.h"
 //#include "secret.h"               // <<--- UNCOMMENT this before you use and change values on config.h tab
 #include "my_secret.h"              // <<--- COMMENT-OUT or REMOVE this line before you use. This is my personal settings.
 
-#include "MyModbusMaster.h"
 
 #include <ArduinoOTA.h>
 #include <ESP8266WiFi.h>
@@ -45,6 +45,7 @@ SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU
 namespace cfg {
 	int	debug 			= DEBUG;
 	int SendPeriod		= 240; 		//GSheets send period in seconds
+	int ReadPeriod		= 600;		//GSheets read params period in seconds
 }
 /*
    This is the address of Pzem devices on the network. Each pzem device has to set unique
@@ -58,23 +59,11 @@ static uint8_t pzemSlave2Addr;
 static uint8_t pzemSlave3Addr;
 static uint8_t pzemSlave4Addr;
 
-static uint8_t pzemSlave1Gain = 1;
-static uint8_t pzemSlave2Gain = 1;
-static uint8_t pzemSlave3Gain = 1;
-static uint8_t pzemSlave4Gain = 1;
-
-MyModbusMaster node1;
-MyModbusMaster node2;
-MyModbusMaster node3;
-MyModbusMaster node4;
+Meter	Meter[4];
 
 
-Meter	Meter1;
-Meter	Meter2;
-Meter	Meter3;
-Meter	Meter4;
-
-
+Ticker fetchCycle;
+uint8_t Mindex = 0;
 
 const char *GScriptId = GSHEET_ID;
 const char* host = "script.google.com";
@@ -87,6 +76,7 @@ HTTPSRedirect* client = nullptr;
 const char data_first_part[] PROGMEM = "{\"sensordatavalues\":{";
 
 unsigned long	LastSend;
+unsigned long	LastRead;
 
 void setup() {
   Serial.begin(76800);
@@ -132,7 +122,7 @@ void setup() {
 
   // ArduinoOTA.setPort(8266);
   // ArduinoOTA.setPassword((const char *)"123");
-
+  // Install Bonjour for Windows if OTA not works (https://support.apple.com/kb/DL999?locale=en_US&viewlocale=ru_RU)
   ArduinoOTA.onStart([]() {
     Serial.println("OTA Start");
   });
@@ -163,50 +153,40 @@ void setup() {
 
   // start Modbus/RS-485 serial communication
   digitalWrite(LED_BUILTIN, LOW);    			// turn the LED ON by making the voltage HIGH
-  node1.begin(pzemSlave1Addr, pzem1Serial);
-  node2.begin(pzemSlave2Addr, pzem1Serial);
-  node3.begin(pzemSlave3Addr, pzem1Serial);
-  node4.begin(pzemSlave4Addr, pzem1Serial);
+
+  Meter[0].begin(pzemSlave1Addr, &pzem1Serial);
+  Meter[1].begin(pzemSlave2Addr, &pzem1Serial);
+  Meter[2].begin(pzemSlave3Addr, &pzem1Serial);
+  Meter[3].begin(pzemSlave4Addr, &pzem1Serial);
+
   digitalWrite(LED_BUILTIN, HIGH);    			// turn the LED ON by making the voltage HIGH
 
   LastSend = millis();
+  LastRead = millis();
+
+  fetchCycle.attach(0.250, fetchCycleCall);		// Cyclic interrupt to call sensor data
+
+
   Serial.print("====================================================\r\n\r\n\r\n\r\n\r\n");
 }
 
-void pzemdevice(MyModbusMaster *node, Meter *Meter1, uint8_t gain)
-{
-  // PZEM Device data fetching
-  Serial.println("====================================================");
-  Serial.print("Now checking Modbus "); Serial.println(node->getSlaveID());
+void fetchCycleCall(){
 
-  uint8_t result1;
+	Meter[Mindex].GetData();
+	Mindex++;
 
-  ESP.wdtDisable();     //disable watchdog during modbus read or else ESP crashes when no slave connected                                               
-  result1 = node->readInputRegisters(0x0000, 10);
-  ESP.wdtEnable(1);    	//enable watchdog during modbus read
-  
-  if (result1 == node->ku8MBSuccess)
-  {
-	double voltage_usage      = (node->getResponseBuffer(0x00) / 10.0f);
-	double current_usage      = (node->getResponseBuffer(0x01) / (gain * 1000.000f));
-	double active_power       = (node->getResponseBuffer(0x03) / (gain * 10.0f));
-	double active_energy      = (node->getResponseBuffer(0x05) / (gain * 1000.0f));
-	double frequency          = (node->getResponseBuffer(0x07) / 10.0f);
-	double power_factor       = (node->getResponseBuffer(0x08) / 100.0f);
-	double over_power_alarm   = (node->getResponseBuffer(0x09));
+	if(Mindex>3){
+		digitalWrite(LED_BUILTIN, LOW);    	// turn the LED ON by making the voltage LOW
+		delay(10);
+		digitalWrite(LED_BUILTIN, HIGH);    // turn the LED OFF by making the voltage HIGH
+		Mindex = 0;
+	}
 
-    Meter1->VOLTAGE.NewMeas(		voltage_usage);
-    Meter1->CURRENT_USAGE.NewMeas(	current_usage);
-    Meter1->ACTIVE_POWER.NewMeas(	active_power);
-    Meter1->ACTIVE_ENERGY.NewMeas(	active_energy);
-    Meter1->FREQUENCY.NewMeas(		frequency);
-    Meter1->POWER_FACTOR.NewMeas(	power_factor);
-  }
-  else {
-    Serial.print("Failed to read modbus "); Serial.println(node->getSlaveID());
-    Meter1->CRCError();
-  }
 }
+
+
+
+
 
 void resetEnergy(uint8_t slaveAddr) {
   //The command to reset the slave's energy is (total 4 bytes):
@@ -251,20 +231,10 @@ void changeAddress(uint8_t OldslaveAddr, uint8_t NewslaveAddr)
 
 void loop() {
 
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(10);
-  digitalWrite(LED_BUILTIN, HIGH);
 
   ArduinoOTA.handle();
 
-  pzemdevice(&node1, &Meter1, pzemSlave1Gain);
-  delay(250);
-  pzemdevice(&node2, &Meter2, pzemSlave2Gain);
-  delay(250);
-  pzemdevice(&node3, &Meter3, pzemSlave3Gain);
-  delay(250);
-  pzemdevice(&node4, &Meter4, pzemSlave4Gain);
-  delay(250);
+
 
   if((millis() - LastSend)/1000 > (unsigned int)cfg::SendPeriod){
 	  debug_out(String("loop: FreeHeap=") + String(ESP.getFreeHeap()), 												DEBUG_MED_INFO, 1);
@@ -272,6 +242,17 @@ void loop() {
 	  Send2GSheets();
 	  LastSend = millis();
   }
+
+  if((millis() - LastRead)/1000 > (unsigned int)cfg::ReadPeriod){
+
+	  if(CheckGSheets()){
+		  debug_out(String("loop: Prepare to reboot from GSheets"), 												DEBUG_MED_INFO, 1);
+		  Send2GSheets();
+		  ESP.reset();
+	  }
+	  LastRead = millis();
+  }
+
 
   yield();
 }
@@ -325,10 +306,10 @@ void Send2GSheets(){
 
 			data = FPSTR(data_first_part);
 
-			data += Var2Json(F("M1"),		Meter1.GetJson());
-			data += Var2Json(F("M2"),		Meter2.GetJson());
-			data += Var2Json(F("M3"),		Meter3.GetJson());
-			data += Var2Json(F("M4"),		Meter4.GetJson());
+			data += Var2Json(F("M1"),		Meter[0].GetJson());
+			data += Var2Json(F("M2"),		Meter[1].GetJson());
+			data += Var2Json(F("M3"),		Meter[2].GetJson());
+			data += Var2Json(F("M4"),		Meter[3].GetJson());
 
 			data += "}}";
 
@@ -347,10 +328,10 @@ void Send2GSheets(){
 		if(client->POST(url_write, host, data)){
 			debug_out(F("Send2GSheets: Spreadsheet updated"), DEBUG_MIN_INFO, 1);
 
-			Meter1.Clear();
-			Meter2.Clear();
-			Meter3.Clear();
-			Meter4.Clear();
+			Meter[0].Clear();
+			Meter[1].Clear();
+			Meter[2].Clear();
+			Meter[3].Clear();
 		}
 		else{
 			debug_out(F("Send2GSheets: Spreadsheet update fails: "), DEBUG_MIN_INFO, 1);
@@ -412,10 +393,12 @@ void SetupGSheets(){
 		pzemSlave3Addr = GetGSheetsRange("Addr03").toInt();
 		pzemSlave4Addr = GetGSheetsRange("Addr04").toInt();
 
-		pzemSlave1Gain = GetGSheetsRange("Gain01").toInt();
-		pzemSlave2Gain = GetGSheetsRange("Gain02").toInt();
-		pzemSlave3Gain = GetGSheetsRange("Gain03").toInt();
-		pzemSlave4Gain = GetGSheetsRange("Gain04").toInt();
+		Meter[0].Divisor = GetGSheetsRange("Gain01").toInt();
+		Meter[1].Divisor = GetGSheetsRange("Gain02").toInt();
+		Meter[2].Divisor = GetGSheetsRange("Gain03").toInt();
+		Meter[3].Divisor = GetGSheetsRange("Gain04").toInt();
+
+		cfg::SendPeriod	 = GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
 	}
 
 	// delete HTTPSRedirect object
@@ -431,6 +414,76 @@ void SetupGSheets(){
 		ESP.reset();
 	}
 }
+
+
+
+bool CheckGSheets(){
+
+	bool Restart = false;
+
+	// Connect to spreadsheet
+
+	client = new HTTPSRedirect(httpsPort);
+	client->setPrintResponseBody(false);
+	client->setContentTypeHeader("application/json");
+
+	debug_out(F("SetupGSheets: Client object created"), 												DEBUG_MED_INFO, 1);
+
+	if (client != nullptr){
+		if (!client->connected()){
+
+			// Try to connect for a maximum of 1 times
+			for (int i=0; i<10; i++){
+
+				debug_out(F("SetupGSheets: Calling Client->connect"), 									DEBUG_MED_INFO, 1);
+
+				int retval = client->connect(host, httpsPort);
+				if (retval == 1) {
+					 break;
+				}
+				else {
+					debug_out(F("SetupGSheets: Connection failed. Retrying..."), 						DEBUG_WARNING, 1);
+					delay(5000);
+					yield();
+					Serial.println(client->getResponseBody() );
+				}
+			}
+		}
+	}
+	else{
+		debug_out(F("SetupGSheets: Error creating client object! Reboot."), 							DEBUG_ERROR, 1);
+		Serial.flush();
+		ESP.reset();
+	}
+	if (!client->connected()){
+		debug_out(F("SetupGSheets: Connection failed. Reboot."), 										DEBUG_ERROR, 1);
+		Serial.flush();
+		ESP.reset();
+	}
+	else
+	{
+		String RebootReq = GetGSheetsRange("reboot");
+		RebootReq.toUpperCase();
+		Restart = String("REBOOT").equals(RebootReq);
+	}
+
+	// delete HTTPSRedirect object
+	delete client;
+	client = nullptr;
+
+	debug_out(F("SetupGSheets: Client object deleted"), 												DEBUG_MED_INFO, 1);
+
+
+	if(!pzemSlave1Addr || !pzemSlave2Addr || !pzemSlave3Addr || !pzemSlave4Addr){
+		debug_out(F("SetupGSheets: No device adresses. Reboot."), 										DEBUG_ERROR, 1);
+		Serial.flush();
+		ESP.reset();
+	}
+
+	return Restart;
+}
+
+
 
 
 String GetGSheetsRange(String Range){

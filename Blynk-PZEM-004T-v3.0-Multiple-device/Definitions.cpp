@@ -67,7 +67,19 @@ uint32_t measurement::GetCount(){
 	return this->count;
 }
 
+/*
+Constructor.
 
+Creates class object; initialize it using Meter::begin().
+*/
+Meter::Meter(){
+	this->CRCerr = 0;
+	this->Divisor = 1.0;
+}
+void Meter::begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial){
+	this->MBNode.begin(pzemSlaveAddr, *pzemSerial);
+	this->Clear();
+}
 String Meter::DebugCRC(){
 	String strDebug = "";
 		strDebug  =	F("CRC errors: ");
@@ -86,14 +98,13 @@ void Meter::Clear(){
 	this->FREQUENCY.Clear();
 	this->POWER_FACTOR.Clear();
 }
-Meter::Meter(){
-	this->Clear();
-}
 void Meter::CRCError(){
 	this->CRCerr++;
 }
 String Meter::GetJson(){
 	String data = "{";
+
+	noInterrupts();
 
 	data += Var2Json(F("VOLT"),		this->VOLTAGE.GetJson()			);
 	data += Var2Json(F("CURR"),		this->CURRENT_USAGE.GetJson()	);
@@ -104,11 +115,46 @@ String Meter::GetJson(){
 
 	data += Var2Json(F("MCNT"),		(double)this->VOLTAGE.GetCount());
 
+	interrupts();
+
 	data += "}";
 
 	return data;
 }
+void Meter::GetData(){
 
+	  // PZEM Device data fetching
+	  Serial.println("====================================================");
+	  Serial.print("Now checking Modbus "); Serial.println(this->MBNode.getSlaveID());
+
+	  uint8_t result1;
+
+	  ESP.wdtDisable();     //disable watchdog during modbus read or else ESP crashes when no slave connected
+	  result1 = this->MBNode.readInputRegisters(0x0000, 10);
+	  ESP.wdtEnable(1);    	//enable watchdog during modbus read
+
+	  if (result1 == this->MBNode.ku8MBSuccess)
+	  {
+		double voltage_usage      = (this->MBNode.getResponseBuffer(0x00) / 10.0f);
+		double current_usage      = (this->MBNode.getResponseBuffer(0x01) / (this->Divisor * 1000.000f));
+		double active_power       = (this->MBNode.getResponseBuffer(0x03) / (this->Divisor * 10.0f));
+		double active_energy      = (this->MBNode.getResponseBuffer(0x05) / (this->Divisor * 1000.0f));
+		double frequency          = (this->MBNode.getResponseBuffer(0x07) / 10.0f);
+		double power_factor       = (this->MBNode.getResponseBuffer(0x08) / 100.0f);
+		double over_power_alarm   = (this->MBNode.getResponseBuffer(0x09));
+
+		this->VOLTAGE.NewMeas(		voltage_usage);
+		this->CURRENT_USAGE.NewMeas(	current_usage);
+		this->ACTIVE_POWER.NewMeas(	active_power);
+		this->ACTIVE_ENERGY.NewMeas(	active_energy);
+		this->FREQUENCY.NewMeas(		frequency);
+		this->POWER_FACTOR.NewMeas(	power_factor);
+	  }
+	  else {
+	    Serial.print("Failed to read modbus "); Serial.println(this->MBNode.getSlaveID());
+	    this->CRCError();
+	  }
+}
 
 /*****************************************************************
  * convert float to string with a      							 *

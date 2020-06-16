@@ -24,7 +24,6 @@
 
 */
 
-//#define BLYNK_PRINT Serial        // Uncomment for debugging 
 
 #include "Definitions.h"
 //#include "secret.h"               // <<--- UNCOMMENT this before you use and change values on config.h tab
@@ -33,15 +32,11 @@
 #include "MyModbusMaster.h"
 
 #include <ArduinoOTA.h>
-//#include <BlynkSimpleEsp8266.h>
-//#include <SimpleTimer.h>
-//#include <ModbusMaster.h>
 #include <ESP8266WiFi.h>
 
 
 #include <SoftwareSerial.h>  //  ( NODEMCU ESP8266 )
 SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
-//SoftwareSerial pzem2Serial(RX2_PIN_NODEMCU, TX2_PIN_NODEMCU); // (RX,TX) NodeMCU connect to (TX,RX) of PZEM
 
 
 #include "lib/HTTPSRedirect.h"

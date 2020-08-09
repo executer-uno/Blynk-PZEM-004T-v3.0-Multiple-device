@@ -22,7 +22,8 @@
 	/***************************************************
 	 *        Server Settings
 	 **************************************************/
-	#define OTA_HOSTNAME "PZEM-004T v3.0 Multiple Slave"
+	#define OTA_HOSTNAME "PZEM-004T"	// no dots, no spaces!
+										// after device online in LAN you can check if its alive by ping to OTA_HOSTNAME.local
 
 
 	// Build in LED

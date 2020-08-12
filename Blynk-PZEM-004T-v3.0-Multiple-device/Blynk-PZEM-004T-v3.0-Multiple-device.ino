@@ -117,7 +117,6 @@ void setup() {
 
   ArduinoOTA.setHostname(OTA_HOSTNAME);
   setupOTA(OTA_HOSTNAME);
-
   delay(1000);
 
   SetupGSheets();
@@ -297,7 +296,7 @@ void Send2GSheets(){
 
 				data = payload_base + data;
 
-				debug_out(F("Send2GSheets: Send from buffer to spreadsheet. Payload prepared:"), 				DEBUG_MED_INFO, 1);
+				debug_out(F("Send2GSheets: Send from buffer to spreadsheet. Payload prepared:"), 		DEBUG_MED_INFO, 1);
 				debug_out(data, 																		DEBUG_MED_INFO, 1);
 
 			if(client->POST(url_write, host, data)){
@@ -317,16 +316,17 @@ void Send2GSheets(){
 		delete client;
 		client = nullptr;
 
-		debug_out(F("Send2GSheets Client object deleted"), 											DEBUG_MED_INFO, 1);
+		debug_out(F("Send2GSheets Client object deleted"), 												DEBUG_MED_INFO, 1);
 	}
-	else debug_out(F("No data to send"), 															DEBUG_MED_INFO, 1);
+	else debug_out(F("No data to send"), 																DEBUG_MED_INFO, 1);
 
 }
 
 void SetupGSheets(){
-	// Connect to spreadsheet
 
+	// Connect to spreadsheet
 	client = new HTTPSRedirect(httpsPort);
+	client->setInsecure();											// Important row! Not works without (no connection establish)
 	client->setPrintResponseBody(false);
 	client->setContentTypeHeader("application/json");
 
@@ -381,6 +381,7 @@ void SetupGSheets(){
 
 		cfg::SendPeriod	 = GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
 	}
+
 
 	// delete HTTPSRedirect object
 	delete client;

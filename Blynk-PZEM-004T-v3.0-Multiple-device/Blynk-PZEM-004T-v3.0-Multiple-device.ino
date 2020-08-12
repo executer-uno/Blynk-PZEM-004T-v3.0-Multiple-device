@@ -48,7 +48,7 @@ SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU
 namespace cfg {
 	int	debug 			= DEBUG;
 	int SendPeriod		= 240; 		//GSheets send period in seconds
-	int ReadPeriod		= 600;		//GSheets read params period in seconds
+	int ReadPeriod		= 600;		//GSheets read parameters period in seconds
 }
 /*
    This is the address of Pzem devices on the network. Each pzem device has to set unique
@@ -117,9 +117,18 @@ void setup() {
 
   ArduinoOTA.setHostname(OTA_HOSTNAME);
   setupOTA(OTA_HOSTNAME);
-  delay(1000);
+
+  // Proceed Telnet
+  TelnetStream.begin();
+  delay(5000);
+  debug_out(F("Telnet protocol started."), 										DEBUG_ALWAYS, 1);
+  debug_out(F("Telnet R for reboot"), 											DEBUG_ALWAYS, 1);
+  debug_out(F("Telnet S for stop telnet"), 										DEBUG_ALWAYS, 1);
 
   SetupGSheets();
+
+
+
 
   // start Modbus/RS-485 serial communication
   digitalWrite(LED_BUILTIN, LOW);    			// turn the LED ON by making the voltage HIGH
@@ -134,29 +143,14 @@ void setup() {
   LastSend = millis();
   LastRead = millis();
 
-  fetchCycle.attach(0.250, fetchCycleCall);		// Cyclic interrupt to call sensor data
+  fetchCycle.attach(2, fetchCycleCall);			// Cyclic interrupt to call sensor data
 
-  debug_out(F("====================================================\r\n\r\n\r\n\r\n\r\n"), 			DEBUG_ALWAYS, 1);
-
-}
-
-void fetchCycleCall(){
-
-	Meter[Mindex].GetData();
-	Mindex++;
-
-	if(Mindex>3){
-		digitalWrite(LED_BUILTIN, LOW);    	// turn the LED ON by making the voltage LOW
-		delay(10);
-		digitalWrite(LED_BUILTIN, HIGH);    // turn the LED OFF by making the voltage HIGH
-		Mindex = 0;
-	}
+  debug_out(F("Setup done."), 													DEBUG_ALWAYS, 1);
+  debug_out(String("SendPeriod=") + String(cfg::SendPeriod),					DEBUG_ALWAYS, 1);
+  debug_out(String("ReadPeriod=") + String(cfg::ReadPeriod),					DEBUG_ALWAYS, 1);
+  debug_out(F("===================================================="), 			DEBUG_ALWAYS, 1);
 
 }
-
-
-
-
 
 void resetEnergy(uint8_t slaveAddr) {
   //The command to reset the slave's energy is (total 4 bytes):
@@ -201,12 +195,27 @@ void changeAddress(uint8_t OldslaveAddr, uint8_t NewslaveAddr)
   delay(1000);
 }
 
+// Time interrupt cycle
+void fetchCycleCall(){
+
+	Meter[Mindex].GetData();
+	Mindex++;
+
+	if(Mindex>3){
+		digitalWrite(LED_BUILTIN, LOW);    	// turn the LED ON by making the voltage LOW
+		delay(10);
+		digitalWrite(LED_BUILTIN, HIGH);    // turn the LED OFF by making the voltage HIGH
+		Mindex = 0;
+	}
+
+	ArduinoOTA.handle();
+	yield();
+}
+
+// Free loop
 void loop() {
 
-
   ArduinoOTA.handle();
-
-
 
   if((millis() - LastSend)/1000 > (unsigned int)cfg::SendPeriod){
 	  debug_out(String("loop: FreeHeap=") + String(ESP.getFreeHeap()), 												DEBUG_MED_INFO, 1);
@@ -215,6 +224,7 @@ void loop() {
 	  LastSend = millis();
   }
 
+  // check GSheets parameters update
   if((millis() - LastRead)/1000 > (unsigned int)cfg::ReadPeriod){
 
 	  if(CheckGSheets()){
@@ -224,6 +234,21 @@ void loop() {
 	  }
 	  LastRead = millis();
   }
+
+  // Proceed Telnet
+	  switch (TelnetStream.read()) {
+		case 'R':
+			TelnetStream.println("ESP reboots...");
+			delay(1000);
+			TelnetStream.stop();
+			ESP.reset();
+			break;
+		case 'S':
+			TelnetStream.println("Telnet protoclol stops.");
+			TelnetStream.flush();
+			TelnetStream.stop();
+			break;
+	  }
 
 
   yield();
@@ -391,7 +416,7 @@ void SetupGSheets(){
 
 
 	if(!pzemSlave1Addr || !pzemSlave2Addr || !pzemSlave3Addr || !pzemSlave4Addr){
-		debug_out(F("SetupGSheets: No device adresses. Reboot."), 										DEBUG_ERROR, 1);
+		debug_out(F("SetupGSheets: No device addresses. Reboot."), 										DEBUG_ERROR, 1);
 		Serial.flush();
 		ESP.reset();
 	}

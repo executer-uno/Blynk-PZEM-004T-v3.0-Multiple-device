@@ -52,13 +52,13 @@ bool HTTPSRedirect::printRedir(void){
   
   // Check if connection to host is alive
   if (!connected()){
-    Serial.println("Error! Not connected to host.");
+	DPRINTLN("Error! Not connected to host.");
     return false;
   }
 
   // Clear the input stream of any junk data before making the request
   while(available()){
-    Serial.println("Clear the input stream HTTPS redir 57");  // debug stuck
+	DPRINTLN("Clear the input stream HTTPS redir 57");  // debug stuck
     read();
   }
   

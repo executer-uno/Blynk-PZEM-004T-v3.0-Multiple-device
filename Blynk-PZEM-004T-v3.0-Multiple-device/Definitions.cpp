@@ -125,8 +125,8 @@ String Meter::GetJson(){
 void Meter::GetData(){
 
 	  // PZEM Device data fetching
-	  Serial.println("====================================================");
-	  Serial.print("Now checking Modbus "); Serial.println(this->MBNode.getSlaveID());
+	  debug_out(F("Now reading Modbus "), 													DEBUG_MAX_INFO, 0);
+	  debug_out(String(this->MBNode.getSlaveID()), 											DEBUG_MAX_INFO, 1);
 
 	  uint8_t result1;
 
@@ -144,15 +144,17 @@ void Meter::GetData(){
 		double power_factor       = (this->MBNode.getResponseBuffer(0x08) / 100.0f);
 		double over_power_alarm   = (this->MBNode.getResponseBuffer(0x09));
 
-		this->VOLTAGE.NewMeas(		voltage_usage);
+		this->VOLTAGE.NewMeas(			voltage_usage);
 		this->CURRENT_USAGE.NewMeas(	current_usage);
-		this->ACTIVE_POWER.NewMeas(	active_power);
+		this->ACTIVE_POWER.NewMeas(		active_power);
 		this->ACTIVE_ENERGY.NewMeas(	active_energy);
 		this->FREQUENCY.NewMeas(		frequency);
-		this->POWER_FACTOR.NewMeas(	power_factor);
+		this->POWER_FACTOR.NewMeas(		power_factor);
 	  }
 	  else {
-	    Serial.print("Failed to read modbus "); Serial.println(this->MBNode.getSlaveID());
+		debug_out(F("Failed to read modbus slave "), 										DEBUG_ERROR, 0);
+		debug_out(String(this->MBNode.getSlaveID()), 										DEBUG_ERROR, 1);
+
 	    this->CRCError();
 	  }
 }

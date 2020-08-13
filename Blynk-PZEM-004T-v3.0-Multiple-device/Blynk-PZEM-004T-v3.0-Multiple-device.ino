@@ -124,6 +124,12 @@ void setup() {
   debug_out(F("Telnet protocol started."), 										DEBUG_ALWAYS, 1);
   debug_out(F("Telnet R for reboot"), 											DEBUG_ALWAYS, 1);
   debug_out(F("Telnet S for stop telnet"), 										DEBUG_ALWAYS, 1);
+  debug_out(F("DEBUG LEVEL 'ALWAYS'   : 0"), 									DEBUG_ALWAYS, 1);
+  debug_out(F("DEBUG LEVEL 'ERROR'    : 1"), 									DEBUG_ALWAYS, 1);
+  debug_out(F("DEBUG LEVEL 'WARNING'  : 2"), 									DEBUG_ALWAYS, 1);
+  debug_out(F("DEBUG LEVEL 'MIN_INFO' : 3"), 									DEBUG_ALWAYS, 1);
+  debug_out(F("DEBUG LEVEL 'MED_INFO' : 4"), 									DEBUG_ALWAYS, 1);
+  debug_out(F("DEBUG LEVEL 'MAX_INFO' : 5"), 									DEBUG_ALWAYS, 1);
 
   SetupGSheets();
 
@@ -143,7 +149,7 @@ void setup() {
   LastSend = millis();
   LastRead = millis();
 
-  fetchCycle.attach(2, fetchCycleCall);			// Cyclic interrupt to call sensor data
+  fetchCycle.attach(0.5, fetchCycleCall);			// Cyclic interrupt to call sensor data
 
   debug_out(F("Setup done."), 													DEBUG_ALWAYS, 1);
   debug_out(String("SendPeriod=") + String(cfg::SendPeriod),					DEBUG_ALWAYS, 1);
@@ -209,7 +215,6 @@ void fetchCycleCall(){
 	}
 
 	ArduinoOTA.handle();
-	yield();
 }
 
 // Free loop
@@ -218,14 +223,22 @@ void loop() {
   ArduinoOTA.handle();
 
   if((millis() - LastSend)/1000 > (unsigned int)cfg::SendPeriod){
+
+	  fetchCycle.detach();
+
 	  debug_out(String("loop: FreeHeap=") + String(ESP.getFreeHeap()), 												DEBUG_MED_INFO, 1);
+
 
 	  Send2GSheets();
 	  LastSend = millis();
+
+	  fetchCycle.attach(0.5, fetchCycleCall);			// Cyclic interrupt to call sensor data
   }
 
   // check GSheets parameters update
   if((millis() - LastRead)/1000 > (unsigned int)cfg::ReadPeriod){
+
+	  fetchCycle.detach();
 
 	  if(CheckGSheets()){
 		  debug_out(String("loop: Prepare to reboot from GSheets"), 												DEBUG_MED_INFO, 1);
@@ -233,6 +246,8 @@ void loop() {
 		  ESP.reset();
 	  }
 	  LastRead = millis();
+
+	  fetchCycle.attach(0.5, fetchCycleCall);			// Cyclic interrupt to call sensor data
   }
 
   // Proceed Telnet
@@ -250,6 +265,26 @@ void loop() {
 			break;
 	  }
 
+	  switch (Serial.read()) {
+		case '0':
+			cfg::debug = 0;
+			break;
+		case '1':
+			cfg::debug = 1;
+			break;
+		case '2':
+			cfg::debug = 2;
+			break;
+		case '3':
+			cfg::debug = 3;
+			break;
+		case '4':
+			cfg::debug = 4;
+			break;
+		case '5':
+			cfg::debug = 5;
+			break;
+	  }
 
   yield();
 }
@@ -261,6 +296,7 @@ void Send2GSheets(){
 	if(Meter[0].VOLTAGE.GetCount() || Meter[1].VOLTAGE.GetCount()  || Meter[2].VOLTAGE.GetCount() || Meter[3].VOLTAGE.GetCount()){
 
 		client = new HTTPSRedirect(httpsPort);
+		client->setInsecure();											// Important row! Not works without (no connection establish)
 		client->setPrintResponseBody(false);
 		client->setContentTypeHeader("application/json");
 
@@ -394,17 +430,17 @@ void SetupGSheets(){
 	}
 	else
 	{
-		pzemSlave1Addr = GetGSheetsRange("Addr01").toInt();
-		pzemSlave2Addr = GetGSheetsRange("Addr02").toInt();
-		pzemSlave3Addr = GetGSheetsRange("Addr03").toInt();
-		pzemSlave4Addr = GetGSheetsRange("Addr04").toInt();
+		pzemSlave1Addr = 2;//GetGSheetsRange("Addr01").toInt();
+		pzemSlave2Addr = 3;//GetGSheetsRange("Addr02").toInt();
+		pzemSlave3Addr = 4;//GetGSheetsRange("Addr03").toInt();
+		pzemSlave4Addr = 5;//GetGSheetsRange("Addr04").toInt();
 
-		Meter[0].Divisor = GetGSheetsRange("Gain01").toInt();
-		Meter[1].Divisor = GetGSheetsRange("Gain02").toInt();
-		Meter[2].Divisor = GetGSheetsRange("Gain03").toInt();
-		Meter[3].Divisor = GetGSheetsRange("Gain04").toInt();
+		Meter[0].Divisor = 1;//GetGSheetsRange("Gain01").toInt();
+		Meter[1].Divisor = 2;//GetGSheetsRange("Gain02").toInt();
+		Meter[2].Divisor = 4;//GetGSheetsRange("Gain03").toInt();
+		Meter[3].Divisor = 4;//GetGSheetsRange("Gain04").toInt();
 
-		cfg::SendPeriod	 = GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
+		cfg::SendPeriod	 = 180;//GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
 	}
 
 
@@ -431,6 +467,7 @@ bool CheckGSheets(){
 	// Connect to spreadsheet
 
 	client = new HTTPSRedirect(httpsPort);
+	client->setInsecure();											// Important row! Not works without (no connection establish)
 	client->setPrintResponseBody(false);
 	client->setContentTypeHeader("application/json");
 

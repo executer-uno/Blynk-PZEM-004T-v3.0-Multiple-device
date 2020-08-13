@@ -53,7 +53,8 @@
 		float 			sum; 		// summ of measurements in accumulator
 	public:
 		struct measure	Measurements;
-		void NewMeas(float Measure); 	// Add new measurement to accumulator
+		void NewMeas(float Measure); 	// Store new measurement to accumulator
+		void AddMeas(float Measure); 	// Add new measurement to accumulator (summarize)
 		void Clear();					// Push measured values to archive
 		String DebugAvg();				// Returns actual average value for debug
 		String DebugRange();			// Returns string in MIN:MAX format
@@ -69,6 +70,7 @@
 	private:
 		uint32_t 		CRCerr;		// number of CRC errors
 		MyModbusMaster  MBNode;
+		double 			PREV_active_energy;
 
 	public:
 		float			CRCerrRate 	= 0.0;	// Rate of CRC errors (%)
@@ -81,12 +83,14 @@
 		measurement		FREQUENCY;
 		measurement		POWER_FACTOR;
 
-		void GetData();					// Get new measurements from device
-		void Clear();					// Push measured values to archive
-		void CRCError();				// Increase CRC error counter
+		void   GetData();				// Get new measurements from device
+		double GetLastEnergy();			// Get last measured Energy counter
+		void   ResetEnergy();			// Reset energy counter
+		void   Clear();					// Push measured values to archive
+		void   CRCError();				// Increase CRC error counter
 		String DebugCRC();				// Returns CRC errors rate and measurements count
 		String GetJson();
-		void begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial);
+		void   begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial);
 		Meter();
 	};
 

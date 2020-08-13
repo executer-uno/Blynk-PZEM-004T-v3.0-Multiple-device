@@ -28,6 +28,16 @@ void measurement::NewMeas(float Measure){
 	this->Measurements.min = (this->Measurements.min > Measure ? Measure : this->Measurements.min);
 }
 
+void measurement::AddMeas(float Measure){
+
+	this->count++;
+	this->sum += Measure;
+
+	this->Measurements.avg = this->sum;
+	this->Measurements.max = this->sum;
+	this->Measurements.min = this->sum;
+}
+
 void measurement::Clear(){
 
 	// prepare for next measurements
@@ -76,6 +86,7 @@ Creates class object; initialize it using Meter::begin().
 Meter::Meter(){
 	this->CRCerr = 0;
 	this->Divisor = 1.0;
+	this->PREV_active_energy = -1.0;
 }
 void Meter::begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial){
 	this->MBNode.begin(pzemSlaveAddr, *pzemSerial);
@@ -122,6 +133,21 @@ String Meter::GetJson(){
 
 	return data;
 }
+
+void Meter::ResetEnergy() {
+  //The command to reset the slave's energy is (total 4 bytes):
+  //Slave address + 0x42 + CRC check high byte + CRC check low byte.
+  static uint16_t resetCommand = 0x0042;
+
+  debug_out(F("Resetting Energy"), 															DEBUG_MIN_INFO, 1);
+
+  ESP.wdtDisable();     //disable watchdog during modbus read or else ESP crashes when no slave connected
+  this->MBNode.send(resetCommand);
+  ESP.wdtEnable(1);    	//enable watchdog during modbus read
+
+  this->PREV_active_energy = 0.0;
+}
+
 void Meter::GetData(){
 
 	  // PZEM Device data fetching
@@ -144,12 +170,16 @@ void Meter::GetData(){
 		double power_factor       = (this->MBNode.getResponseBuffer(0x08) / 100.0f);
 		double over_power_alarm   = (this->MBNode.getResponseBuffer(0x09));
 
+		if(this->PREV_active_energy < 0.0){ this->PREV_active_energy = active_energy;}		// Initialize PREV value
+
 		this->VOLTAGE.NewMeas(			voltage_usage);
 		this->CURRENT_USAGE.NewMeas(	current_usage);
 		this->ACTIVE_POWER.NewMeas(		active_power);
-		this->ACTIVE_ENERGY.NewMeas(	active_energy);
+		this->ACTIVE_ENERGY.AddMeas(	active_energy - this->PREV_active_energy);
 		this->FREQUENCY.NewMeas(		frequency);
 		this->POWER_FACTOR.NewMeas(		power_factor);
+
+		this->PREV_active_energy = active_energy;		// Store for previous
 	  }
 	  else {
 		debug_out(F("Failed to read modbus slave "), 										DEBUG_ERROR, 0);
@@ -157,6 +187,10 @@ void Meter::GetData(){
 
 	    this->CRCError();
 	  }
+}
+
+double Meter::GetLastEnergy(){
+	return this->PREV_active_energy;
 }
 
 /*****************************************************************

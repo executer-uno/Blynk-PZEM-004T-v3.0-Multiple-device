@@ -47,6 +47,7 @@ SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU
 
 namespace cfg {
 	int	debug 			= DEBUG;
+	float cycle			= 1.0;		//Sensor read cycle
 	int SendPeriod		= 240; 		//GSheets send period in seconds
 	int ReadPeriod		= 600;		//GSheets read parameters period in seconds
 }
@@ -149,30 +150,13 @@ void setup() {
   LastSend = millis();
   LastRead = millis();
 
-  fetchCycle.attach(0.5, fetchCycleCall);			// Cyclic interrupt to call sensor data
+  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
 
   debug_out(F("Setup done."), 													DEBUG_ALWAYS, 1);
   debug_out(String("SendPeriod=") + String(cfg::SendPeriod),					DEBUG_ALWAYS, 1);
   debug_out(String("ReadPeriod=") + String(cfg::ReadPeriod),					DEBUG_ALWAYS, 1);
   debug_out(F("===================================================="), 			DEBUG_ALWAYS, 1);
 
-}
-
-void resetEnergy(uint8_t slaveAddr) {
-  //The command to reset the slave's energy is (total 4 bytes):
-  //Slave address + 0x42 + CRC check high byte + CRC check low byte.
-  uint16_t u16CRC = 0xFFFF;
-  static uint8_t resetCommand = 0x42;
-  u16CRC = crc16_update(u16CRC, slaveAddr);
-  u16CRC = crc16_update(u16CRC, resetCommand);
-
-  debug_out(F("Resetting Energy"), 								DEBUG_MED_INFO, 1);
-
-  pzem1Serial.write(slaveAddr);
-  pzem1Serial.write(resetCommand);
-  pzem1Serial.write(lowByte(u16CRC));
-  pzem1Serial.write(highByte(u16CRC));
-  delay(1000);
 }
 
 //function to change/assign pzem address
@@ -188,7 +172,7 @@ void changeAddress(uint8_t OldslaveAddr, uint8_t NewslaveAddr)
   u16CRC = crc16_update(u16CRC, highByte(NewslaveAddr));
   u16CRC = crc16_update(u16CRC, lowByte(NewslaveAddr));
 
-  debug_out(F("Changing Slave Address"), 						DEBUG_MED_INFO, 1);
+  debug_out(F("Changing Slave Address"), 						DEBUG_ALWAYS, 1);
 
   pzem1Serial.write(OldslaveAddr);
   pzem1Serial.write(SlaveParameter);
@@ -198,13 +182,16 @@ void changeAddress(uint8_t OldslaveAddr, uint8_t NewslaveAddr)
   pzem1Serial.write(lowByte(NewslaveAddr));
   pzem1Serial.write(lowByte(u16CRC));
   pzem1Serial.write(highByte(u16CRC));
-  delay(1000);
 }
 
 // Time interrupt cycle
 void fetchCycleCall(){
 
 	Meter[Mindex].GetData();
+
+	if(Meter[Mindex].GetLastEnergy()>95.0){	// If more than 95 kW - reset counter
+		Meter[Mindex].ResetEnergy();
+	}
 	Mindex++;
 
 	if(Mindex>3){
@@ -232,7 +219,7 @@ void loop() {
 	  Send2GSheets();
 	  LastSend = millis();
 
-	  fetchCycle.attach(0.5, fetchCycleCall);			// Cyclic interrupt to call sensor data
+	  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
   }
 
   // check GSheets parameters update
@@ -247,7 +234,7 @@ void loop() {
 	  }
 	  LastRead = millis();
 
-	  fetchCycle.attach(0.5, fetchCycleCall);			// Cyclic interrupt to call sensor data
+	  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
   }
 
   // Proceed Telnet

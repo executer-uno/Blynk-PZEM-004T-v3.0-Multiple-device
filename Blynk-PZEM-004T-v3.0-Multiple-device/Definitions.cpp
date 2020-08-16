@@ -27,7 +27,33 @@ inline float max(float a, float b) {
         return b;
     return a;
 }
+void measurement::NewCycle(){
 
+	if(this->Meas_2_Store.count){					// data have not been sent yet, concatenate measurements
+
+		// AVG
+		float t_sum = 0.0;
+		t_sum += this->Meas_2_Store.avg * this->Meas_2_Store.count;
+		t_sum += this->sum;
+
+		this->Meas_2_Store.count += this->Measurements.count;
+		this->Meas_2_Store.avg = t_sum / this->Meas_2_Store.count;
+
+		// MAX
+		this->Meas_2_Store.max = max(this->Meas_2_Store.max, this->Measurements.max);
+
+		// MIN
+		this->Meas_2_Store.min = min(this->Meas_2_Store.min, this->Measurements.min);
+
+	}
+	else{											// store fresh values to outbox
+		this->Meas_2_Store = this->Measurements;
+	}
+
+	this->Clear();
+	this->first_ms = millis();
+
+}
 void measurement::NewMeas(float Measure, float treshold){
 	float t_max = 0.0;
 	float t_min = 0.0;
@@ -45,31 +71,10 @@ void measurement::NewMeas(float Measure, float treshold){
 
 	if(new_cycle){
 
-		if(this->Meas_2_Store.count){					// data have not been sent yet, concatenate measurements
+		this->NewCycle();
 
-			// AVG
-			float t_sum = 0.0;
-			t_sum += this->Meas_2_Store.avg * this->Meas_2_Store.count;
-			t_sum += this->sum;
-
-			this->Meas_2_Store.count += this->Measurements.count;
-			this->Meas_2_Store.avg = t_sum / this->Meas_2_Store.count;
-
-			// MAX
-			this->Meas_2_Store.max = max(this->Meas_2_Store.max, this->Measurements.max);
-
-			// MIN
-			this->Meas_2_Store.min = min(this->Meas_2_Store.min, this->Measurements.min);
-
-		}
-		else{											// store fresh values to outbox
-			this->Meas_2_Store = this->Measurements;
-		}
-
-		this->Clear();
 		t_max = Measure;
 		t_min = Measure;
-		this->first_ms = millis();
 	}
 
 	this->Measurements.count++;
@@ -219,23 +224,8 @@ void Meter::Stored(){
 }
 bool Meter::Check_2_Store(){
 	bool ToStore = false;
-	bool ToStoreV = false;
-	bool ToStoreC = false;
-	bool ToStoreP = false;
 
-	ToStore |= (ToStoreV = this->VOLTAGE.GetCount_2_Store());
-	ToStore |= (ToStoreC = this->CURRENT_USAGE.GetCount_2_Store());
-	ToStore |= (ToStoreP = this->ACTIVE_POWER.GetCount_2_Store());
-
-	if(ToStore){
-		debug_out(F("Need to store from ID "), 													DEBUG_MIN_INFO, 0);
-		debug_out(String(this->MBNode.getSlaveID()), 											DEBUG_MIN_INFO, 0);
-		debug_out(F(" by value of "),		 													DEBUG_MIN_INFO, 0);
-		if(ToStoreV){		debug_out(F("V "),													DEBUG_MIN_INFO, 0);}
-		if(ToStoreC){		debug_out(F("C "),													DEBUG_MIN_INFO, 0);}
-		if(ToStoreP){		debug_out(F("P "),													DEBUG_MIN_INFO, 0);}
-		debug_out(F(""), 																		DEBUG_MIN_INFO, 1);
-	}
+	ToStore |= (this->VOLTAGE.GetCount_2_Store());
 
 	return ToStore;
 }
@@ -277,7 +267,7 @@ void Meter::GetData(){
 
 		if(this->PREV_active_energy < 0.0){ this->PREV_active_energy = active_energy;}		// Initialize PREV value
 
-		this->VOLTAGE.NewMeas(			voltage_usage,	5.0);
+		this->VOLTAGE.NewMeas(			voltage_usage,	6.0);
 		this->CURRENT_USAGE.NewMeas(	current_usage,	1.0);
 		this->ACTIVE_POWER.NewMeas(		active_power,	200.0);
 		this->ACTIVE_ENERGY.AddMeas(	active_energy - this->PREV_active_energy);
@@ -292,6 +282,17 @@ void Meter::GetData(){
 
 	    this->CRCError();
 	  }
+
+	  if(this->VOLTAGE.GetCount_2_Store() || this->CURRENT_USAGE.GetCount_2_Store() || this->ACTIVE_POWER.GetCount_2_Store()){
+		  if(!this->VOLTAGE.GetCount_2_Store())			{	this->VOLTAGE.NewCycle();	}
+		  if(!this->CURRENT_USAGE.GetCount_2_Store())	{	this->CURRENT_USAGE.NewCycle();	}
+		  if(!this->ACTIVE_POWER.GetCount_2_Store())	{	this->ACTIVE_POWER.NewCycle();	}
+		  if(!this->ACTIVE_ENERGY.GetCount_2_Store())	{	this->ACTIVE_ENERGY.NewCycle();	}
+		  if(!this->FREQUENCY.GetCount_2_Store())		{	this->FREQUENCY.NewCycle();	}
+		  if(!this->POWER_FACTOR.GetCount_2_Store())	{	this->POWER_FACTOR.NewCycle();	}
+	  }
+
+
 }
 
 double Meter::GetLastEnergy(){

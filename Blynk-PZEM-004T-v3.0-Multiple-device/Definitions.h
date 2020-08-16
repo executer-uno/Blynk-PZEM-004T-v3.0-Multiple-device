@@ -60,6 +60,7 @@
 		struct measure	Measurements;					// Measurement accumulation
 		void NewMeas(float Measure, float treshold); 	// Store new measurement to accumulator
 		void AddMeas(float Measure); 					// Add new measurement to accumulator (summarize)
+		void NewCycle();								// Force new cycle
 		void Clear();									// Push measured values to archive
 		void Stored();									// Data stored to google spreadsheets and buffer should be cleared
 		String DebugAvg();								// Returns actual average value for debug

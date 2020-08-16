@@ -136,10 +136,10 @@ void setup() {
   // start Modbus/RS-485 serial communication
   digitalWrite(LED_BUILTIN, LOW);    			// turn the LED ON by making the voltage HIGH
 
-  PZEM_Meter[0].begin(pzemSlave1Addr, &pzem1Serial, 20, cfg::SendPeriod);
-  PZEM_Meter[1].begin(pzemSlave2Addr, &pzem1Serial, 20, cfg::SendPeriod);
-  PZEM_Meter[2].begin(pzemSlave3Addr, &pzem1Serial, 20, cfg::SendPeriod);
-  PZEM_Meter[3].begin(pzemSlave4Addr, &pzem1Serial, 20, cfg::SendPeriod);
+  PZEM_Meter[0].begin(pzemSlave1Addr, &pzem1Serial, 30, cfg::SendPeriod);
+  PZEM_Meter[1].begin(pzemSlave2Addr, &pzem1Serial, 30, cfg::SendPeriod);
+  PZEM_Meter[2].begin(pzemSlave3Addr, &pzem1Serial, 30, cfg::SendPeriod);
+  PZEM_Meter[3].begin(pzemSlave4Addr, &pzem1Serial, 30, cfg::SendPeriod);
 
   PZEM_Meter[0].ID = 1;
   PZEM_Meter[1].ID = 2;

@@ -277,12 +277,12 @@ void Meter::GetData(){
 
 		if(this->PREV_active_energy < 0.0){ this->PREV_active_energy = active_energy;}		// Initialize PREV value
 
-		this->VOLTAGE.NewMeas(			voltage_usage,	4.0);
+		this->VOLTAGE.NewMeas(			voltage_usage,	5.0);
 		this->CURRENT_USAGE.NewMeas(	current_usage,	1.0);
 		this->ACTIVE_POWER.NewMeas(		active_power,	200.0);
 		this->ACTIVE_ENERGY.AddMeas(	active_energy - this->PREV_active_energy);
 		this->FREQUENCY.NewMeas(		frequency,		1.0);
-		this->POWER_FACTOR.NewMeas(		power_factor,	0.1);
+		this->POWER_FACTOR.NewMeas(		power_factor,	0.2);
 
 		this->PREV_active_energy = active_energy;		// Store for previous
 	  }

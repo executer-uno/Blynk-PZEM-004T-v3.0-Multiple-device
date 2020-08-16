@@ -63,7 +63,7 @@ static uint8_t pzemSlave2Addr;
 static uint8_t pzemSlave3Addr;
 static uint8_t pzemSlave4Addr;
 
-Meter	Meter[4];
+Meter	PZEM_Meter[4];
 
 
 Ticker fetchCycle;
@@ -136,10 +136,15 @@ void setup() {
   // start Modbus/RS-485 serial communication
   digitalWrite(LED_BUILTIN, LOW);    			// turn the LED ON by making the voltage HIGH
 
-  Meter[0].begin(pzemSlave1Addr, &pzem1Serial, 20, cfg::SendPeriod);
-  Meter[1].begin(pzemSlave2Addr, &pzem1Serial, 20, cfg::SendPeriod);
-  Meter[2].begin(pzemSlave3Addr, &pzem1Serial, 20, cfg::SendPeriod);
-  Meter[3].begin(pzemSlave4Addr, &pzem1Serial, 20, cfg::SendPeriod);
+  PZEM_Meter[0].begin(pzemSlave1Addr, &pzem1Serial, 20, cfg::SendPeriod);
+  PZEM_Meter[1].begin(pzemSlave2Addr, &pzem1Serial, 20, cfg::SendPeriod);
+  PZEM_Meter[2].begin(pzemSlave3Addr, &pzem1Serial, 20, cfg::SendPeriod);
+  PZEM_Meter[3].begin(pzemSlave4Addr, &pzem1Serial, 20, cfg::SendPeriod);
+
+  PZEM_Meter[0].ID = 1;
+  PZEM_Meter[1].ID = 2;
+  PZEM_Meter[2].ID = 3;
+  PZEM_Meter[3].ID = 4;
 
   digitalWrite(LED_BUILTIN, HIGH);    			// turn the LED ON by making the voltage HIGH
 
@@ -183,10 +188,10 @@ void changeAddress(uint8_t OldslaveAddr, uint8_t NewslaveAddr)
 // Time interrupt cycle
 void fetchCycleCall(){
 
-	Meter[Mindex].GetData();
+	PZEM_Meter[Mindex].GetData();
 
-	if(Meter[Mindex].GetLastEnergy()>95.0){	// If more than 95 kW - reset counter
-		Meter[Mindex].ResetEnergy();
+	if(PZEM_Meter[Mindex].GetLastEnergy()>95.0){	// If more than 95 kW - reset counter
+		PZEM_Meter[Mindex].ResetEnergy();
 	}
 	Mindex++;
 
@@ -205,17 +210,24 @@ void loop() {
 
   ArduinoOTA.handle();
 
-  if(Meter[0].Check_2_Store() || Meter[1].Check_2_Store() || Meter[2].Check_2_Store() || Meter[3].Check_2_Store()){
+  for(int i = 0; i<=3; i++){
+	  if(PZEM_Meter[i].Check_2_Store()){
 
-	  fetchCycle.detach();
+		  fetchCycle.detach();
 
-	  debug_out(String("loop: FreeHeap=") + String(ESP.getFreeHeap()), 												DEBUG_MED_INFO, 1);
+		  debug_out(String("loop: FreeHeap=") + String(ESP.getFreeHeap()), 												DEBUG_MED_INFO, 1);
 
-	  Send2GSheets();
-	  LastSend = millis();
+		  Send2GSheets(&PZEM_Meter[i]);
+		  LastSend = millis();
 
-	  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
+		  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
+
+	  }
   }
+
+
+
+
 
   // check GSheets parameters update
   if((millis() - LastRead)/1000 > (unsigned int)cfg::ReadPeriod){
@@ -224,7 +236,10 @@ void loop() {
 
 	  if(CheckGSheets()){
 		  debug_out(String("loop: Prepare to reboot from GSheets"), 												DEBUG_MED_INFO, 1);
-		  Send2GSheets();
+		  Send2GSheets(&PZEM_Meter[0]);
+		  Send2GSheets(&PZEM_Meter[1]);
+		  Send2GSheets(&PZEM_Meter[2]);
+		  Send2GSheets(&PZEM_Meter[3]);
 		  ESP.reset();
 	  }
 	  LastRead = millis();
@@ -271,10 +286,9 @@ void loop() {
   yield();
 }
 
-void Send2GSheets(){
+void Send2GSheets(Meter *PZMeter){
 	// Connect to spreadsheet
 
-	if(Meter[0].VOLTAGE.GetCount_2_Store() || Meter[1].VOLTAGE.GetCount_2_Store()  || Meter[2].VOLTAGE.GetCount_2_Store() || Meter[3].VOLTAGE.GetCount_2_Store()){
 
 		client = new HTTPSRedirect(httpsPort);
 		client->setInsecure();											// Important row! Not works without (no connection establish)
@@ -322,10 +336,7 @@ void Send2GSheets(){
 
 				data = FPSTR(data_first_part);
 
-				data += Var2Json(F("M1"),		Meter[0].GetJson());
-				data += Var2Json(F("M2"),		Meter[1].GetJson());
-				data += Var2Json(F("M3"),		Meter[2].GetJson());
-				data += Var2Json(F("M4"),		Meter[3].GetJson());
+				data += Var2Json("M0"+String(PZMeter->ID),		PZMeter->GetJson());
 
 				data += "}}";
 
@@ -344,23 +355,18 @@ void Send2GSheets(){
 			if(client->POST(url_write, host, data)){
 				debug_out(F("Send2GSheets: Spreadsheet updated"), DEBUG_MIN_INFO, 1);
 
-				Meter[0].Stored();
-				Meter[1].Stored();
-				Meter[2].Stored();
-				Meter[3].Stored();
+				PZMeter->Stored();
 			}
 			else{
 				debug_out(F("Send2GSheets: Spreadsheet update fails: "), DEBUG_MIN_INFO, 1);
 			}
 		}
-
 		// delete HTTPSRedirect object
 		delete client;
 		client = nullptr;
 
 		debug_out(F("Send2GSheets Client object deleted"), 												DEBUG_MED_INFO, 1);
-	}
-	else debug_out(F("No data to send"), 																DEBUG_MED_INFO, 1);
+
 
 }
 
@@ -416,10 +422,10 @@ void SetupGSheets(){
 		pzemSlave3Addr = 4;//GetGSheetsRange("Addr03").toInt();
 		pzemSlave4Addr = 5;//GetGSheetsRange("Addr04").toInt();
 
-		Meter[0].Divisor = 1;//GetGSheetsRange("Gain01").toInt();
-		Meter[1].Divisor = 2;//GetGSheetsRange("Gain02").toInt();
-		Meter[2].Divisor = 4;//GetGSheetsRange("Gain03").toInt();
-		Meter[3].Divisor = 4;//GetGSheetsRange("Gain04").toInt();
+		PZEM_Meter[0].Divisor = 1;//GetGSheetsRange("Gain01").toInt();
+		PZEM_Meter[1].Divisor = 2;//GetGSheetsRange("Gain02").toInt();
+		PZEM_Meter[2].Divisor = 4;//GetGSheetsRange("Gain03").toInt();
+		PZEM_Meter[3].Divisor = 4;//GetGSheetsRange("Gain04").toInt();
 
 		cfg::SendPeriod	 = 180;//GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
 	}

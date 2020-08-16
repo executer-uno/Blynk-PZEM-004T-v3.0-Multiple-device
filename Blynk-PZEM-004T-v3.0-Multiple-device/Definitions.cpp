@@ -17,51 +17,120 @@ namespace cfg {
 	extern int	debug;
 }
 
-
-void measurement::NewMeas(float Measure){
-
-	this->count++;
-	this->sum += Measure;
-
-	this->Measurements.avg = this->sum / this->count;
-	this->Measurements.max = (this->Measurements.max < Measure ? Measure : this->Measurements.max);
-	this->Measurements.min = (this->Measurements.min > Measure ? Measure : this->Measurements.min);
+inline float min(float a, float b) {
+    if (a > b)
+        return b;
+    return a;
+}
+inline float max(float a, float b) {
+    if (a < b)
+        return b;
+    return a;
 }
 
+void measurement::NewMeas(float Measure, float treshold){
+	float t_max = 0.0;
+	float t_min = 0.0;
+	bool  new_cycle = false;
+
+
+	t_max = max(this->Measurements.max, Measure);
+	t_min = min(this->Measurements.min, Measure);
+
+	// check if new accumulation cycle should be started
+	new_cycle |= (millis() - this->first_ms) > this->Tmax_ms;
+	new_cycle |= (t_max - t_min) > treshold;
+	new_cycle &= (millis() - this->first_ms) > this->Tmin_ms;
+	new_cycle &= this->Measurements.count > 0;
+
+	if(new_cycle){
+
+		if(this->Meas_2_Store.count){					// data have not been sent yet, concatenate measurements
+
+			// AVG
+			float t_sum = 0.0;
+			t_sum += this->Meas_2_Store.avg * this->Meas_2_Store.count;
+			t_sum += this->sum;
+
+			this->Meas_2_Store.count += this->Measurements.count;
+			this->Meas_2_Store.avg = t_sum / this->Meas_2_Store.count;
+
+			// MAX
+			this->Meas_2_Store.max = max(this->Meas_2_Store.max, this->Measurements.max);
+
+			// MIN
+			this->Meas_2_Store.min = min(this->Meas_2_Store.min, this->Measurements.min);
+
+		}
+		else{											// store fresh values to outbox
+			this->Meas_2_Store = this->Measurements;
+		}
+
+		this->Clear();
+		t_max = Measure;
+		t_min = Measure;
+		this->first_ms = millis();
+	}
+
+	this->Measurements.count++;
+	this->sum += Measure;
+
+	this->Measurements.avg = this->sum / this->Measurements.count;
+	this->Measurements.max = t_max;
+	this->Measurements.min = t_min;
+}
 void measurement::AddMeas(float Measure){
 
-	this->count++;
+	this->Measurements.count++;
 	this->sum += Measure;
 
 	this->Measurements.avg = this->sum;
 	this->Measurements.max = this->sum;
 	this->Measurements.min = this->sum;
-}
 
+	this->Meas_2_Store = this->Measurements;
+	this->first_ms = millis();	// for AddMeas() it will be 'last_ms' in fact
+}
 void measurement::Clear(){
 
 	// prepare for next measurements
-	this->count  =0;
+	this->first_ms = 0;
+
 	this->sum 	 =0;
 
-	this->Measurements.avg = NAN;
-	this->Measurements.max = -99999999999.9;
-	this->Measurements.min = +99999999999.9;
+	this->Measurements.count  	=0;
+	this->Measurements.avg		= NAN;
+	this->Measurements.max 		= -99999999999.9;
+	this->Measurements.min 		= +99999999999.9;
+}
+void measurement::Stored(){
+	// clear send buffer
+	this->Meas_2_Store.count = 0;
+	this->Meas_2_Store.avg = NAN;
+	this->Meas_2_Store.max = NAN;
+	this->Meas_2_Store.min = NAN;
 }
 measurement::measurement(){
-
 	this->Clear();
+	this->Stored();
+}
+bool measurement::setCycles(unsigned int Tmin_sec, unsigned int Tmax_sec){
+	// Store internal parameters
+	this->Tmax_ms = Tmax_sec * 1000;
+	this->Tmin_ms = Tmin_sec * 1000;
+
+	return (this->Tmax_ms >= this->Tmin_ms);
 }
 String measurement::DebugAvg(){
 	String strDebug = "";
-	if(this->count > 0){
+	if(this->Measurements.count > 0){
 		strDebug = Float2String(this->Measurements.avg,1 , 7);
 	}
 	return strDebug;
 }
 String measurement::DebugRange(){
 	String strDebug = "";
-	if(this->count > 0){
+	if(this->Measurements.count > 0){
 		strDebug  = Float2String(this->Measurements.min,1 , 7) + " : ";
 		strDebug += Float2String(this->Measurements.max,1 , 7);
 	}
@@ -69,13 +138,13 @@ String measurement::DebugRange(){
 }
 String measurement::GetJson(){
 
-	String data = this->Measurements.min + String(":") + this->Measurements.avg + String(":") + this->Measurements.max;
+	String data = this->Meas_2_Store.min + String(":") + Meas_2_Store.avg + String(":") + Meas_2_Store.max;
 
 	return data;
 }
-uint32_t measurement::GetCount(){
+uint32_t measurement::GetCount_2_Store(){
 
-	return this->count;
+	return this->Meas_2_Store.count;
 }
 
 /*
@@ -88,9 +157,16 @@ Meter::Meter(){
 	this->Divisor = 1.0;
 	this->PREV_active_energy = -1.0;
 }
-void Meter::begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial){
+void Meter::begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial, unsigned int Tmin_sec, unsigned int Tmax_sec){
 	this->MBNode.begin(pzemSlaveAddr, *pzemSerial);
 	this->Clear();
+
+	this->VOLTAGE.setCycles(		Tmin_sec, Tmax_sec);
+	this->CURRENT_USAGE.setCycles(	Tmin_sec, Tmax_sec);
+	this->ACTIVE_POWER.setCycles(	Tmin_sec, Tmax_sec);
+	this->ACTIVE_ENERGY.setCycles(	Tmin_sec, Tmax_sec);
+	this->FREQUENCY.setCycles(		Tmin_sec, Tmax_sec);
+	this->POWER_FACTOR.setCycles(	Tmin_sec, Tmax_sec);
 }
 String Meter::DebugCRC(){
 	String strDebug = "";
@@ -125,7 +201,7 @@ String Meter::GetJson(){
 	data += Var2Json(F("FREQ"),		this->FREQUENCY.GetJson()		);
 	data += Var2Json(F("POWF"),		this->POWER_FACTOR.GetJson()	);
 
-	data += Var2Json(F("MCNT"),		(double)this->VOLTAGE.GetCount());
+	data += Var2Json(F("MCNT"),		(double)this->VOLTAGE.GetCount_2_Store());
 
 	interrupts();
 
@@ -133,7 +209,36 @@ String Meter::GetJson(){
 
 	return data;
 }
+void Meter::Stored(){
+	this->VOLTAGE.Stored();
+	this->CURRENT_USAGE.Stored();
+	this->ACTIVE_POWER.Stored();
+	this->ACTIVE_ENERGY.Stored();
+	this->FREQUENCY.Stored();
+	this->POWER_FACTOR.Stored();
+}
+bool Meter::Check_2_Store(){
+	bool ToStore = false;
+	bool ToStoreV = false;
+	bool ToStoreC = false;
+	bool ToStoreP = false;
 
+	ToStore |= (ToStoreV = this->VOLTAGE.GetCount_2_Store());
+	ToStore |= (ToStoreC = this->CURRENT_USAGE.GetCount_2_Store());
+	ToStore |= (ToStoreP = this->ACTIVE_POWER.GetCount_2_Store());
+
+	if(ToStore){
+		debug_out(F("Need to store from ID "), 													DEBUG_MIN_INFO, 0);
+		debug_out(String(this->MBNode.getSlaveID()), 											DEBUG_MIN_INFO, 0);
+		debug_out(F(" by value of "),		 													DEBUG_MIN_INFO, 0);
+		if(ToStoreV){		debug_out(F("V "),													DEBUG_MIN_INFO, 0);}
+		if(ToStoreC){		debug_out(F("C "),													DEBUG_MIN_INFO, 0);}
+		if(ToStoreP){		debug_out(F("P "),													DEBUG_MIN_INFO, 0);}
+		debug_out(F(""), 																		DEBUG_MIN_INFO, 1);
+	}
+
+	return ToStore;
+}
 void Meter::ResetEnergy() {
   //The command to reset the slave's energy is (total 4 bytes):
   //Slave address + 0x42 + CRC check high byte + CRC check low byte.
@@ -172,12 +277,12 @@ void Meter::GetData(){
 
 		if(this->PREV_active_energy < 0.0){ this->PREV_active_energy = active_energy;}		// Initialize PREV value
 
-		this->VOLTAGE.NewMeas(			voltage_usage);
-		this->CURRENT_USAGE.NewMeas(	current_usage);
-		this->ACTIVE_POWER.NewMeas(		active_power);
+		this->VOLTAGE.NewMeas(			voltage_usage,	4.0);
+		this->CURRENT_USAGE.NewMeas(	current_usage,	1.0);
+		this->ACTIVE_POWER.NewMeas(		active_power,	200.0);
 		this->ACTIVE_ENERGY.AddMeas(	active_energy - this->PREV_active_energy);
-		this->FREQUENCY.NewMeas(		frequency);
-		this->POWER_FACTOR.NewMeas(		power_factor);
+		this->FREQUENCY.NewMeas(		frequency,		1.0);
+		this->POWER_FACTOR.NewMeas(		power_factor,	0.1);
 
 		this->PREV_active_energy = active_energy;		// Store for previous
 	  }

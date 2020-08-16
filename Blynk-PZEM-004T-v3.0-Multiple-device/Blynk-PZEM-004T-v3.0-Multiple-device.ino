@@ -110,7 +110,6 @@ void setup() {
    
   //changeAddress(0x04, 0x14);  //uncomment to set pzem address. You can press reset button on nodemcu if this function is not called
 
-
   //resetEnergy(0x01);
   /* By Uncomment the function in the above line you can reset the energy counter (Wh) back to zero from one of the slaves.
       //resetEnergy(pzemSlaveAddr);
@@ -134,16 +133,13 @@ void setup() {
 
   SetupGSheets();
 
-
-
-
   // start Modbus/RS-485 serial communication
   digitalWrite(LED_BUILTIN, LOW);    			// turn the LED ON by making the voltage HIGH
 
-  Meter[0].begin(pzemSlave1Addr, &pzem1Serial);
-  Meter[1].begin(pzemSlave2Addr, &pzem1Serial);
-  Meter[2].begin(pzemSlave3Addr, &pzem1Serial);
-  Meter[3].begin(pzemSlave4Addr, &pzem1Serial);
+  Meter[0].begin(pzemSlave1Addr, &pzem1Serial, 20, cfg::SendPeriod);
+  Meter[1].begin(pzemSlave2Addr, &pzem1Serial, 20, cfg::SendPeriod);
+  Meter[2].begin(pzemSlave3Addr, &pzem1Serial, 20, cfg::SendPeriod);
+  Meter[3].begin(pzemSlave4Addr, &pzem1Serial, 20, cfg::SendPeriod);
 
   digitalWrite(LED_BUILTIN, HIGH);    			// turn the LED ON by making the voltage HIGH
 
@@ -209,12 +205,11 @@ void loop() {
 
   ArduinoOTA.handle();
 
-  if((millis() - LastSend)/1000 > (unsigned int)cfg::SendPeriod){
+  if(Meter[0].Check_2_Store() || Meter[1].Check_2_Store() || Meter[2].Check_2_Store() || Meter[3].Check_2_Store()){
 
 	  fetchCycle.detach();
 
 	  debug_out(String("loop: FreeHeap=") + String(ESP.getFreeHeap()), 												DEBUG_MED_INFO, 1);
-
 
 	  Send2GSheets();
 	  LastSend = millis();
@@ -276,11 +271,10 @@ void loop() {
   yield();
 }
 
-
 void Send2GSheets(){
 	// Connect to spreadsheet
 
-	if(Meter[0].VOLTAGE.GetCount() || Meter[1].VOLTAGE.GetCount()  || Meter[2].VOLTAGE.GetCount() || Meter[3].VOLTAGE.GetCount()){
+	if(Meter[0].VOLTAGE.GetCount_2_Store() || Meter[1].VOLTAGE.GetCount_2_Store()  || Meter[2].VOLTAGE.GetCount_2_Store() || Meter[3].VOLTAGE.GetCount_2_Store()){
 
 		client = new HTTPSRedirect(httpsPort);
 		client->setInsecure();											// Important row! Not works without (no connection establish)
@@ -350,10 +344,10 @@ void Send2GSheets(){
 			if(client->POST(url_write, host, data)){
 				debug_out(F("Send2GSheets: Spreadsheet updated"), DEBUG_MIN_INFO, 1);
 
-				Meter[0].Clear();
-				Meter[1].Clear();
-				Meter[2].Clear();
-				Meter[3].Clear();
+				Meter[0].Stored();
+				Meter[1].Stored();
+				Meter[2].Stored();
+				Meter[3].Stored();
 			}
 			else{
 				debug_out(F("Send2GSheets: Spreadsheet update fails: "), DEBUG_MIN_INFO, 1);

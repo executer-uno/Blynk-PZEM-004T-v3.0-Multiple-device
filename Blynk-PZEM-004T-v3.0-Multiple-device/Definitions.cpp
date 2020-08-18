@@ -27,97 +27,110 @@ inline float max(float a, float b) {
         return b;
     return a;
 }
-void measurement::NewCycle(){
 
-	if(this->Meas_2_Store.count){					// data have not been sent yet, concatenate measurements
 
-		// AVG
-		float t_sum = 0.0;
-		t_sum += this->Meas_2_Store.avg * this->Meas_2_Store.count;
-		t_sum += this->sum;
-
-		this->Meas_2_Store.count += this->Measurements.count;
-		this->Meas_2_Store.avg = t_sum / this->Meas_2_Store.count;
-
-		// MAX
-		this->Meas_2_Store.max = max(this->Meas_2_Store.max, this->Measurements.max);
-
-		// MIN
-		this->Meas_2_Store.min = min(this->Meas_2_Store.min, this->Measurements.min);
-
-	}
-	else{											// store fresh values to outbox
-		this->Meas_2_Store = this->Measurements;
-	}
-
-	this->Clear();
-	this->first_ms = millis();
-
-}
 void measurement::NewMeas(float Measure, float treshold){
 	float t_max = 0.0;
 	float t_min = 0.0;
 	bool  new_cycle = false;
 
+	t_max = max(this->Meas_02_Accum.max, Measure);
+	t_min = min(this->Meas_02_Accum.min, Measure);
+	t_max = max(this->Meas_01_Check.max, t_max);		// Meas_01_Check can contain several measurements,
+	t_min = min(this->Meas_01_Check.min, t_min);		// so better to check previous values also
 
-	t_max = max(this->Measurements.max, Measure);
-	t_min = min(this->Measurements.min, Measure);
+	this->Meas_01_Check.sum 	+= Measure;
+	this->Meas_01_Check.max		 = t_max;
+	this->Meas_01_Check.min		 = t_min;
+	this->Meas_01_Check.count++;
+
 
 	// check if new accumulation cycle should be started
 	new_cycle |= (millis() - this->first_ms) > this->Tmax_ms;
-	new_cycle |= (t_max - t_min) > treshold;
+	new_cycle |= (this->Meas_01_Check.max - this->Meas_01_Check.min) >= treshold;
 	new_cycle &= (millis() - this->first_ms) > this->Tmin_ms;
-	new_cycle &= this->Measurements.count > 0;
+	new_cycle &= this->Meas_02_Accum.count > 0;
 
-	if(new_cycle){
+	this->Need_to_Store = new_cycle;
+}
+void measurement::Meas_to_Accum(){
 
-		this->NewCycle();
+	float t_max = 0.0;
+	float t_min = 0.0;
 
-		t_max = Measure;
-		t_min = Measure;
+	t_max = max(this->Meas_02_Accum.max, this->Meas_01_Check.max);
+	t_min = min(this->Meas_02_Accum.min, this->Meas_01_Check.min);
+
+	this->Meas_02_Accum.sum 	+= this->Meas_01_Check.sum;		// Store temporary Meas_01_Check to accumulator
+	this->Meas_02_Accum.count	+= this->Meas_01_Check.count;
+	this->Meas_02_Accum.max		 = t_max;
+	this->Meas_02_Accum.min		 = t_min;
+
+	// clear temporary Meas_01_Check structure
+	this->Meas_01_Check.sum 	= 0.0;
+	this->Meas_01_Check.count	= 0;
+	this->Meas_01_Check.max		= -99999999999.9;
+	this->Meas_01_Check.min		= +99999999999.9;
+
+	this->Need_to_Store 		= false;
+}
+void measurement::Accum_to_Store(){
+
+	if(this->Meas_02_Accum.count){
+		this->first_ms = millis();
 	}
 
-	this->Measurements.count++;
-	this->sum += Measure;
+	float t_max = 0.0;
+	float t_min = 0.0;
 
-	this->Measurements.avg = this->sum / this->Measurements.count;
-	this->Measurements.max = t_max;
-	this->Measurements.min = t_min;
+	t_max = max(this->Meas_02_Accum.max, this->Meas_03_Store.max);
+	t_min = min(this->Meas_02_Accum.min, this->Meas_03_Store.min);
+
+	this->Meas_03_Store.sum 	+= this->Meas_02_Accum.sum;		// Store temporary Meas_01_Check to accumulator
+	this->Meas_03_Store.count	+= this->Meas_02_Accum.count;
+	this->Meas_03_Store.max		 = t_max;
+	this->Meas_03_Store.min		 = t_min;
+
+	// clear accumulator Meas_02_Accum
+	this->Meas_02_Accum.sum 	= 0.0;
+	this->Meas_02_Accum.count	= 0;
+	this->Meas_02_Accum.max		= -99999999999.9;
+	this->Meas_02_Accum.min		= +99999999999.9;
 }
 void measurement::AddMeas(float Measure){
 
-	this->Measurements.count++;
-	this->sum += Measure;
-
-	this->Measurements.avg = this->sum;
-	this->Measurements.max = this->sum;
-	this->Measurements.min = this->sum;
-
-	this->Meas_2_Store = this->Measurements;
-	this->first_ms = millis();	// for AddMeas() it will be 'last_ms' in fact
+	this->Meas_02_Accum.count++;
+	this->Meas_02_Accum.sum 	+= Measure;
+	this->Meas_02_Accum.max 	 = Measure;
+	this->Meas_02_Accum.min 	 = Measure;
 }
-void measurement::Clear(){
+void measurement::Clear(){		// Clear all measurements in accumulation buffer to be ready for new cycle
 
 	// prepare for next measurements
 	this->first_ms = 0;
 
-	this->sum 	 =0;
+	this->Meas_01_Check.sum  	= 0.0;
+	this->Meas_01_Check.count	= 0;
+	this->Meas_01_Check.max 	= -99999999999.9;
+	this->Meas_01_Check.min 	= +99999999999.9;
 
-	this->Measurements.count  	=0;
-	this->Measurements.avg		= NAN;
-	this->Measurements.max 		= -99999999999.9;
-	this->Measurements.min 		= +99999999999.9;
+	this->Meas_02_Accum.sum		= 0.0;
+	this->Meas_02_Accum.count 	= 0;
+	this->Meas_02_Accum.max		= -99999999999.9;
+	this->Meas_02_Accum.min		= +99999999999.9;
+
+	this->Need_to_Store			= false;
 }
-void measurement::Stored(){
+void measurement::ClearStore(){
 	// clear send buffer
-	this->Meas_2_Store.count = 0;
-	this->Meas_2_Store.avg = NAN;
-	this->Meas_2_Store.max = NAN;
-	this->Meas_2_Store.min = NAN;
+	this->Meas_03_Store.sum 	= 0.0;
+	this->Meas_03_Store.count 	= 0;
+	this->Meas_03_Store.max 	= -99999999999.9;
+	this->Meas_03_Store.min 	= +99999999999.9;
 }
 measurement::measurement(){
 	this->Clear();
-	this->Stored();
+	this->ClearStore();
 }
 bool measurement::setCycles(unsigned int Tmin_sec, unsigned int Tmax_sec){
 	// Store internal parameters
@@ -126,30 +139,41 @@ bool measurement::setCycles(unsigned int Tmin_sec, unsigned int Tmax_sec){
 
 	return (this->Tmax_ms >= this->Tmin_ms);
 }
+bool measurement::Check_2_Store(){
+
+	return this->Need_to_Store;
+}
 String measurement::DebugAvg(){
 	String strDebug = "";
-	if(this->Measurements.count > 0){
-		strDebug = Float2String(this->Measurements.avg,1 , 7);
+	if(this->Meas_02_Accum.count > 0){
+		strDebug = Float2String(this->Meas_02_Accum.sum/this->Meas_02_Accum.count,1 , 7);
 	}
 	return strDebug;
 }
 String measurement::DebugRange(){
 	String strDebug = "";
-	if(this->Measurements.count > 0){
-		strDebug  = Float2String(this->Measurements.min,1 , 7) + " : ";
-		strDebug += Float2String(this->Measurements.max,1 , 7);
+	if(this->Meas_02_Accum.count > 0){
+		strDebug  = Float2String(this->Meas_02_Accum.min,1 , 7) + " : ";
+		strDebug += Float2String(this->Meas_02_Accum.max,1 , 7);
 	}
 	return strDebug;
 }
 String measurement::GetJson(){
 
-	String data = this->Meas_2_Store.min + String(":") + Meas_2_Store.avg + String(":") + Meas_2_Store.max;
+	String data = "";
+
+	if(Meas_03_Store.count){
+		data = this->Meas_03_Store.min + String(":") + Meas_03_Store.sum/Meas_03_Store.count + String(":") + Meas_03_Store.max;
+	}
+	else{
+		data = "NAN:NAN:NAN";
+	}
 
 	return data;
 }
 uint32_t measurement::GetCount_2_Store(){
 
-	return this->Meas_2_Store.count;
+	return this->Meas_03_Store.count;
 }
 
 /*
@@ -215,12 +239,12 @@ String Meter::GetJson(){
 	return data;
 }
 void Meter::Stored(){
-	this->VOLTAGE.Stored();
-	this->CURRENT_USAGE.Stored();
-	this->ACTIVE_POWER.Stored();
-	this->ACTIVE_ENERGY.Stored();
-	this->FREQUENCY.Stored();
-	this->POWER_FACTOR.Stored();
+	this->VOLTAGE.ClearStore();
+	this->CURRENT_USAGE.ClearStore();
+	this->ACTIVE_POWER.ClearStore();
+	this->ACTIVE_ENERGY.ClearStore();
+	this->FREQUENCY.ClearStore();
+	this->POWER_FACTOR.ClearStore();
 }
 bool Meter::Check_2_Store(){
 	bool ToStore = false;
@@ -267,7 +291,7 @@ void Meter::GetData(){
 
 		if(this->PREV_active_energy < 0.0){ this->PREV_active_energy = active_energy;}		// Initialize PREV value
 
-		this->VOLTAGE.NewMeas(			voltage_usage,	6.0);
+		this->VOLTAGE.NewMeas(			voltage_usage,	5.0);
 		this->CURRENT_USAGE.NewMeas(	current_usage,	1.0);
 		this->ACTIVE_POWER.NewMeas(		active_power,	200.0);
 		this->ACTIVE_ENERGY.AddMeas(	active_energy - this->PREV_active_energy);
@@ -283,15 +307,20 @@ void Meter::GetData(){
 	    this->CRCError();
 	  }
 
-	  if(this->VOLTAGE.GetCount_2_Store() || this->CURRENT_USAGE.GetCount_2_Store() || this->ACTIVE_POWER.GetCount_2_Store()){
-		  if(!this->VOLTAGE.GetCount_2_Store())			{	this->VOLTAGE.NewCycle();	}
-		  if(!this->CURRENT_USAGE.GetCount_2_Store())	{	this->CURRENT_USAGE.NewCycle();	}
-		  if(!this->ACTIVE_POWER.GetCount_2_Store())	{	this->ACTIVE_POWER.NewCycle();	}
-		  if(!this->ACTIVE_ENERGY.GetCount_2_Store())	{	this->ACTIVE_ENERGY.NewCycle();	}
-		  if(!this->FREQUENCY.GetCount_2_Store())		{	this->FREQUENCY.NewCycle();	}
-		  if(!this->POWER_FACTOR.GetCount_2_Store())	{	this->POWER_FACTOR.NewCycle();	}
+	  if(this->VOLTAGE.Check_2_Store() || this->CURRENT_USAGE.Check_2_Store() || this->ACTIVE_POWER.Check_2_Store()){
+		  this->VOLTAGE.Accum_to_Store();
+		  this->ACTIVE_POWER.Accum_to_Store();
+		  this->ACTIVE_ENERGY.Accum_to_Store();
+		  this->FREQUENCY.Accum_to_Store();
+		  this->POWER_FACTOR.Accum_to_Store();
 	  }
 
+	  this->VOLTAGE.Meas_to_Accum();
+	  this->CURRENT_USAGE.Meas_to_Accum();
+	  this->ACTIVE_POWER.Meas_to_Accum();
+	  this->ACTIVE_ENERGY.Meas_to_Accum();
+	  this->FREQUENCY.Meas_to_Accum();
+	  this->POWER_FACTOR.Meas_to_Accum();
 
 }
 
@@ -327,7 +356,7 @@ String Float2String(const double value, uint8_t digits, uint8_t size) {
 }
 
 /*****************************************************************
- * Debug output																									*
+ * Debug output													 *
  *****************************************************************/
 void debug_out(const String& text, const int level, const bool linebreak) {
 	if (level <= cfg::debug) {
@@ -343,7 +372,7 @@ void debug_out(const String& text, const int level, const bool linebreak) {
 }
 
 /*****************************************************************
- * check display values, return '-' if undefined								 *
+ * check display values, return '-' if undefined				 *
  *****************************************************************/
 String check_display_value(double value, double undef, uint8_t digits, uint8_t str_len) {
 	String s = (value != undef ? Float2String(value, digits, str_len) : "-");
@@ -351,7 +380,7 @@ String check_display_value(double value, double undef, uint8_t digits, uint8_t s
 }
 
 /*****************************************************************
- * convert value to json string																	*
+ * convert value to json string									 *
  *****************************************************************/
 String Value2Json(const String& type, const String& value) {
 	String s = F("{\"value_type\":\"{t}\",\"value\":\"{v}\"},");
@@ -362,13 +391,12 @@ String Value2Json(const String& type, const String& value) {
 
 
 /*****************************************************************
- * convert value to json string with timestamp and location																	*
+ * convert value to json string with timestamp and location		 *
  *****************************************************************/
 String ValueLocated2Json(const String& timestamp, const String& lat, const String& lng, const String& value) {
 	String s = F("{\"value\":\"{v}\",\"createdAt\":\"{t}\",\"location\":[{lng},{lat}]}");
 
 	//s = F("{\"value\":\"{v}\" , \"createdAt\":\"{t}\" }\r\n");
-
 
 	s.replace("{t}" , timestamp);
 	s.replace("{v}" , value);
@@ -377,14 +405,12 @@ String ValueLocated2Json(const String& timestamp, const String& lat, const Strin
 
 	debug_out("ValueLocated2Json: " + s,																	DEBUG_ALWAYS, 1);
 
-
-
 	return s;
 }
 
 
 /*****************************************************************
- * convert string value to json string													 *
+ * convert string value to json string							 *
  *****************************************************************/
 String Var2Json(const String& name, const String& value) {
 	String s = F("\"{n}\":\"{v}\",");
@@ -396,7 +422,7 @@ String Var2Json(const String& name, const String& value) {
 }
 
 /*****************************************************************
- * convert boolean value to json string													*
+ * convert boolean value to json string							 *
  *****************************************************************/
 String Var2Json(const String& name, const bool value) {
 	String s = F("\"{n}\":\"{v}\",");
@@ -406,7 +432,7 @@ String Var2Json(const String& name, const bool value) {
 }
 
 /*****************************************************************
- * convert integer value to json string													*
+ * convert integer value to json string							 *
  *****************************************************************/
 String Var2Json(const String& name, const int value) {
 	String s = F("\"{n}\":\"{v}\",");
@@ -416,7 +442,7 @@ String Var2Json(const String& name, const int value) {
 }
 
 /*****************************************************************
- * convert double value to json string													*
+ * convert double value to json string							 *
  *****************************************************************/
 String Var2Json(const String& name, const double value) {
 	String s = F("\"{n}\":\"{v}\",");

@@ -225,10 +225,6 @@ void loop() {
 	  }
   }
 
-
-
-
-
   // check GSheets parameters update
   if((millis() - LastRead)/1000 > (unsigned int)cfg::ReadPeriod){
 
@@ -366,8 +362,6 @@ void Send2GSheets(Meter *PZMeter){
 		client = nullptr;
 
 		debug_out(F("Send2GSheets Client object deleted"), 												DEBUG_MED_INFO, 1);
-
-
 }
 
 void SetupGSheets(){

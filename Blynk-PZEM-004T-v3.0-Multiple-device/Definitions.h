@@ -42,7 +42,7 @@
 	struct measure {
 		float 		max;
 		float 		min;
-		float 		avg;
+		float 		sum;
 		uint32_t 	count;
 	};
 
@@ -50,27 +50,38 @@
 	// Single sensor measurements object
 	class measurement {
 	private:
-		float 			sum; 			// summ of measurements in accumulator
 		unsigned long 	first_ms;		// first measurement timestamp (ms)
 		unsigned long 	Tmin_ms;		// Minimum measurement accumulation period (ms)
 		unsigned long 	Tmax_ms;		// Maximum measurement accumulation period (ms)
-		struct measure 	Meas_2_Store;	// Accumulated data to google sheets
+
+		struct measure 	Meas_01_Check;	// New value temporary storage with accumulated range
+		struct measure	Meas_02_Accum;	// Measurement accumulation
+		struct measure 	Meas_03_Store;	// Accumulated data to google sheets
+
+		bool			Need_to_Store;	// New value need to be stored in new accumulation cycle
 
 	public:
-		struct measure	Measurements;					// Measurement accumulation
+
 		void NewMeas(float Measure, float treshold); 	// Store new measurement to accumulator
+		void Meas_to_Accum();							// Measurement to accumulator
+		void Accum_to_Store();							// Accumulator to storage
+		void ClearStore();								// Data stored to google spreadsheets and buffer should be cleared
+
+
+
+
 		void AddMeas(float Measure); 					// Add new measurement to accumulator (summarize)
 		void NewCycle();								// Force new cycle
+
 		void Clear();									// Push measured values to archive
-		void Stored();									// Data stored to google spreadsheets and buffer should be cleared
+
 		String DebugAvg();								// Returns actual average value for debug
 		String DebugRange();							// Returns string in MIN:MAX format
 		String GetJson();
 		measurement();									// constructor
 		uint32_t GetCount_2_Store();
-		bool Check_2_Store(unsigned min_sec, unsigned max_sec); // Check if measurement is ready to storage
+		bool Check_2_Store(); 							// Check if measurement is ready to storage
 		bool setCycles(unsigned int Tmin_sec, unsigned int Tmax_sec); //set parameters of maximum and minimum measurement cycle in seconds
-
 	};
 
 

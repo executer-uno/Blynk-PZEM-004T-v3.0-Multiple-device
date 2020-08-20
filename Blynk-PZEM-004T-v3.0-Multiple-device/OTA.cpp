@@ -5,6 +5,8 @@
  *      Author: E_CAD
  */
 
+#include <Ticker.h>  				//Ticker Library
+extern	Ticker fetchCycle;
 
 #include "OTA.h"
 #include "my_secret.h"
@@ -39,6 +41,12 @@ void setupOTA(const char* nameprefix) {
 
 
   ArduinoOTA.onStart([]() {
+
+
+	fetchCycle.detach();
+    Serial.println("Cycle interrupt disabled for OTA");
+
+
     String type;
     if (ArduinoOTA.getCommand() == U_FLASH)
       type = "sketch";
@@ -52,7 +60,7 @@ void setupOTA(const char* nameprefix) {
     Serial.println("\nEnd");
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    Serial.printf("OTA: %u%%\r\n", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
     Serial.printf("Error[%u]: ", error);
@@ -61,6 +69,11 @@ void setupOTA(const char* nameprefix) {
     else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
     else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
     else if (error == OTA_END_ERROR) Serial.println("End Failed");
+
+    delay(1000);
+    Serial.println("Reboot by error");
+    ESP.reset();
+
   });
 
   ArduinoOTA.begin();

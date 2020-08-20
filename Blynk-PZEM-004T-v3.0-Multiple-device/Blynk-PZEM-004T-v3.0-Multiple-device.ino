@@ -47,7 +47,7 @@ SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU
 
 namespace cfg {
 	int	debug 			= DEBUG;
-	float cycle			= 1.0;		//Sensor read cycle
+	float cycle			= 0.5;		//Sensor read cycle
 	int SendPeriod		= 240; 		//GSheets send period in seconds
 	int ReadPeriod		= 600;		//GSheets read parameters period in seconds
 }
@@ -210,7 +210,7 @@ void loop() {
 
   ArduinoOTA.handle();
 
-  for(int i = 0; i<=3; i++){
+  for(int i = 0; i<=3; i++){										// 3! 0 is for debug
 	  if(PZEM_Meter[i].Check_2_Store()){
 
 		  fetchCycle.detach();
@@ -421,7 +421,7 @@ void SetupGSheets(){
 		PZEM_Meter[2].Divisor = 4;//GetGSheetsRange("Gain03").toInt();
 		PZEM_Meter[3].Divisor = 4;//GetGSheetsRange("Gain04").toInt();
 
-		cfg::SendPeriod	 = 180;//GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
+		cfg::SendPeriod	 = 60;//GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
 	}
 
 

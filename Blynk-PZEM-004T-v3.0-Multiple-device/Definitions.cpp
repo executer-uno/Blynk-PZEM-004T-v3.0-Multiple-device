@@ -32,7 +32,8 @@ inline float max(float a, float b) {
 void measurement::NewMeas(float Measure, float treshold){
 	float t_max = 0.0;
 	float t_min = 0.0;
-	bool  new_cycle = false;
+	bool  new_cycle[3] 	= {false};
+	bool  cycle 		= false;
 
 	t_max = max(this->Meas_02_Accum.max, Measure);
 	t_min = min(this->Meas_02_Accum.min, Measure);
@@ -46,39 +47,56 @@ void measurement::NewMeas(float Measure, float treshold){
 
 
 	// check if new accumulation cycle should be started
-	new_cycle |= (millis() - this->first_ms) > this->Tmax_ms;
-	new_cycle |= (this->Meas_01_Check.max - this->Meas_01_Check.min) >= treshold;
-	new_cycle &= (millis() - this->first_ms) > this->Tmin_ms;
-	new_cycle &= this->Meas_02_Accum.count > 0;
+	cycle |=	new_cycle[0] = (millis() - this->first_ms) > this->Tmax_ms;
+	cycle |=	new_cycle[1] = (this->Meas_01_Check.max - this->Meas_01_Check.min) >= treshold;
+	cycle &=	new_cycle[2] = (millis() - this->first_ms) > this->Tmin_ms;
 
-	this->Need_to_Store = new_cycle;
+	if(new_cycle[0]){						debug_out(F("New cycle: maximum period. "), 			DEBUG_MAX_INFO, 0);}
+	if(new_cycle[1]){						debug_out(F("New cycle: threshold exceed."), 			DEBUG_MAX_INFO, 0);}
+	if(new_cycle[1]){						debug_out(" Max: " + String(this->Meas_01_Check.max),	DEBUG_MAX_INFO, 0);}
+	if(new_cycle[1]){						debug_out(" Min: " + String(this->Meas_01_Check.min),	DEBUG_MAX_INFO, 0);}
+
+	if(new_cycle[0] || new_cycle[1]){
+		if(!new_cycle[2]){					debug_out(F(" But no minimum period yet "), 			DEBUG_MAX_INFO, 0);}
+		if(!new_cycle[2]){					debug_out(String(millis() - this->first_ms), 			DEBUG_MAX_INFO, 0);}
+											debug_out(F(""), 										DEBUG_MAX_INFO, 1);
+	}
+
+	this->Need_to_Store |= cycle;
 }
 void measurement::Meas_to_Accum(){
 
-	float t_max = 0.0;
-	float t_min = 0.0;
+	if(this->Meas_01_Check.count){									// Check if any data is in Meas_01_Check
 
-	t_max = max(this->Meas_02_Accum.max, this->Meas_01_Check.max);
-	t_min = min(this->Meas_02_Accum.min, this->Meas_01_Check.min);
+		float t_max = 0.0;
+		float t_min = 0.0;
 
-	this->Meas_02_Accum.sum 	+= this->Meas_01_Check.sum;		// Store temporary Meas_01_Check to accumulator
-	this->Meas_02_Accum.count	+= this->Meas_01_Check.count;
-	this->Meas_02_Accum.max		 = t_max;
-	this->Meas_02_Accum.min		 = t_min;
+		this->Need_to_Store 		= false;						// Reset flag that new cycle required
+		if(!this->Meas_02_Accum.count){								// If its a first record after Accum cleared - store timestamp
+
+			this->first_ms 	= millis();
+
+			t_max	= this->Meas_01_Check.sum / this->Meas_01_Check.count;		// Check.max and .min can not be used - they are from previous cycle
+			t_min	= this->Meas_01_Check.sum / this->Meas_01_Check.count;
+		}
+		else {
+			t_max 	= this->Meas_01_Check.max;									// max and min were calculated in previous NewMeas() call
+			t_min 	= this->Meas_01_Check.min;
+		}
+
+		this->Meas_02_Accum.sum 	+= this->Meas_01_Check.sum;		// Store temporary Meas_01_Check to accumulator
+		this->Meas_02_Accum.count	+= this->Meas_01_Check.count;
+		this->Meas_02_Accum.max		 = t_max;
+		this->Meas_02_Accum.min		 = t_min;
+	}
 
 	// clear temporary Meas_01_Check structure
 	this->Meas_01_Check.sum 	= 0.0;
 	this->Meas_01_Check.count	= 0;
 	this->Meas_01_Check.max		= -99999999999.9;
 	this->Meas_01_Check.min		= +99999999999.9;
-
-	this->Need_to_Store 		= false;
 }
 void measurement::Accum_to_Store(){
-
-	if(this->Meas_02_Accum.count){
-		this->first_ms = millis();
-	}
 
 	float t_max = 0.0;
 	float t_min = 0.0;
@@ -96,13 +114,16 @@ void measurement::Accum_to_Store(){
 	this->Meas_02_Accum.count	= 0;
 	this->Meas_02_Accum.max		= -99999999999.9;
 	this->Meas_02_Accum.min		= +99999999999.9;
+
+	debug_out(F("Stored records count: "), 						DEBUG_MED_INFO, 0);
+	debug_out(String(this->Meas_03_Store.count), 				DEBUG_MED_INFO, 1);
 }
 void measurement::AddMeas(float Measure){
 
 	this->Meas_02_Accum.count++;
 	this->Meas_02_Accum.sum 	+= Measure;
-	this->Meas_02_Accum.max 	 = Measure;
-	this->Meas_02_Accum.min 	 = Measure;
+	this->Meas_02_Accum.max 	 = this->Meas_02_Accum.sum;
+	this->Meas_02_Accum.min 	 = this->Meas_02_Accum.sum;
 }
 void measurement::Clear(){		// Clear all measurements in accumulation buffer to be ready for new cycle
 
@@ -270,8 +291,8 @@ void Meter::ResetEnergy() {
 void Meter::GetData(){
 
 	  // PZEM Device data fetching
-	  debug_out(F("Now reading Modbus "), 													DEBUG_MAX_INFO, 0);
-	  debug_out(String(this->MBNode.getSlaveID()), 											DEBUG_MAX_INFO, 1);
+	  debug_out(F("Now reading Modbus "), 													DEBUG_MED_INFO, 0);
+	  debug_out(String(this->MBNode.getSlaveID()), 											DEBUG_MED_INFO, 1);
 
 	  uint8_t result1;
 
@@ -291,11 +312,17 @@ void Meter::GetData(){
 
 		if(this->PREV_active_energy < 0.0){ this->PREV_active_energy = active_energy;}		// Initialize PREV value
 
+		debug_out(F("VOLTAGE"), 															DEBUG_MAX_INFO, 1);
 		this->VOLTAGE.NewMeas(			voltage_usage,	5.0);
+		debug_out(F("CURRENT_USAGE"), 														DEBUG_MAX_INFO, 1);
 		this->CURRENT_USAGE.NewMeas(	current_usage,	1.0);
+		debug_out(F("ACTIVE_POWER"), 														DEBUG_MAX_INFO, 1);
 		this->ACTIVE_POWER.NewMeas(		active_power,	200.0);
+		debug_out(F("ACTIVE_ENERGY"), 														DEBUG_MAX_INFO, 1);
 		this->ACTIVE_ENERGY.AddMeas(	active_energy - this->PREV_active_energy);
+		debug_out(F("FREQUENCY"), 															DEBUG_MAX_INFO, 1);
 		this->FREQUENCY.NewMeas(		frequency,		1.0);
+		debug_out(F("POWER_FACTOR"), 														DEBUG_MAX_INFO, 1);
 		this->POWER_FACTOR.NewMeas(		power_factor,	0.2);
 
 		this->PREV_active_energy = active_energy;		// Store for previous
@@ -309,6 +336,7 @@ void Meter::GetData(){
 
 	  if(this->VOLTAGE.Check_2_Store() || this->CURRENT_USAGE.Check_2_Store() || this->ACTIVE_POWER.Check_2_Store()){
 		  this->VOLTAGE.Accum_to_Store();
+		  this->CURRENT_USAGE.Accum_to_Store();
 		  this->ACTIVE_POWER.Accum_to_Store();
 		  this->ACTIVE_ENERGY.Accum_to_Store();
 		  this->FREQUENCY.Accum_to_Store();
@@ -318,7 +346,7 @@ void Meter::GetData(){
 	  this->VOLTAGE.Meas_to_Accum();
 	  this->CURRENT_USAGE.Meas_to_Accum();
 	  this->ACTIVE_POWER.Meas_to_Accum();
-	  this->ACTIVE_ENERGY.Meas_to_Accum();
+	  //this->ACTIVE_ENERGY.Meas_to_Accum();			// .NewMeas not called for Active Energy. AddMeas() adds data directly to Accum
 	  this->FREQUENCY.Meas_to_Accum();
 	  this->POWER_FACTOR.Meas_to_Accum();
 

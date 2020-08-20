@@ -318,9 +318,9 @@ void Meter::GetData(){
 		debug_out(F("VOLTAGE"), 															DEBUG_MAX_INFO, 1);
 		this->VOLTAGE.NewMeas(			voltage_usage,	5.0);
 		debug_out(F("CURRENT_USAGE"), 														DEBUG_MAX_INFO, 1);
-		this->CURRENT_USAGE.NewMeas(	current_usage,	1.0);
+		this->CURRENT_USAGE.NewMeas(	current_usage,	0.25);
 		debug_out(F("ACTIVE_POWER"), 														DEBUG_MAX_INFO, 1);
-		this->ACTIVE_POWER.NewMeas(		active_power,	200.0);
+		this->ACTIVE_POWER.NewMeas(		active_power,	50.0);
 		debug_out(F("ACTIVE_ENERGY"), 														DEBUG_MAX_INFO, 1);
 		this->ACTIVE_ENERGY.AddMeas(	active_energy - this->PREV_active_energy);
 		debug_out(F("FREQUENCY"), 															DEBUG_MAX_INFO, 1);

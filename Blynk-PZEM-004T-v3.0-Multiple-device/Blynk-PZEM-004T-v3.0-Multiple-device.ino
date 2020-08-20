@@ -77,7 +77,7 @@ String url_read  = String("/macros/s/") + GScriptId + "/exec?read";		// Write to
 String url_write = String("/macros/s/") + GScriptId + "/exec?write";				// Read from Google Spreadsheet
 String payload_base =	"{\"command\": \"appendRow\", \"sheet_name\": \"DATA\", ";
 HTTPSRedirect* client = nullptr;
-const char data_first_part[] PROGMEM = "{\"sensordatavalues\":{";
+const char data_first_part[] PROGMEM = "{\"sensordatavalues\":";
 
 unsigned long	LastSend;
 unsigned long	LastRead;
@@ -332,9 +332,10 @@ void Send2GSheets(Meter *PZMeter){
 
 				data = FPSTR(data_first_part);
 
-				data += Var2Json("M0"+String(PZMeter->ID),		PZMeter->GetJson());
+				//data += Var2Json("M"+String(PZMeter->ID),		PZMeter->GetJson());
+				data += PZMeter->GetJson();
 
-				data += "}}";
+				data += "}";
 
 				// prepare fo gscript
 				data.remove(0, 1);
@@ -411,17 +412,17 @@ void SetupGSheets(){
 	}
 	else
 	{
-		pzemSlave1Addr = 2;//GetGSheetsRange("Addr01").toInt();
-		pzemSlave2Addr = 3;//GetGSheetsRange("Addr02").toInt();
-		pzemSlave3Addr = 4;//GetGSheetsRange("Addr03").toInt();
-		pzemSlave4Addr = 5;//GetGSheetsRange("Addr04").toInt();
+		pzemSlave1Addr = GetGSheetsRange("Addr01").toInt();
+		pzemSlave2Addr = GetGSheetsRange("Addr02").toInt();
+		pzemSlave3Addr = GetGSheetsRange("Addr03").toInt();
+		pzemSlave4Addr = GetGSheetsRange("Addr04").toInt();
 
-		PZEM_Meter[0].Divisor = 1;//GetGSheetsRange("Gain01").toInt();
-		PZEM_Meter[1].Divisor = 2;//GetGSheetsRange("Gain02").toInt();
-		PZEM_Meter[2].Divisor = 4;//GetGSheetsRange("Gain03").toInt();
-		PZEM_Meter[3].Divisor = 4;//GetGSheetsRange("Gain04").toInt();
+		PZEM_Meter[0].Divisor = GetGSheetsRange("Gain01").toInt();
+		PZEM_Meter[1].Divisor = GetGSheetsRange("Gain02").toInt();
+		PZEM_Meter[2].Divisor = GetGSheetsRange("Gain03").toInt();
+		PZEM_Meter[3].Divisor = GetGSheetsRange("Gain04").toInt();
 
-		cfg::SendPeriod	 = 60;//GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
+		cfg::SendPeriod	 = GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
 	}
 
 

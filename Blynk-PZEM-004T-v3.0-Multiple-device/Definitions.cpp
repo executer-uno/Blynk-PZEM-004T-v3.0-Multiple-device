@@ -244,6 +244,7 @@ String Meter::GetJson(){
 
 	noInterrupts();
 
+	data += Var2Json(F("ID"),		this->ID						);
 	data += Var2Json(F("VOLT"),		this->VOLTAGE.GetJson()			);
 	data += Var2Json(F("CURR"),		this->CURRENT_USAGE.GetJson()	);
 	data += Var2Json(F("POWR"),		this->ACTIVE_POWER.GetJson()	);
@@ -252,6 +253,8 @@ String Meter::GetJson(){
 	data += Var2Json(F("POWF"),		this->POWER_FACTOR.GetJson()	);
 
 	data += Var2Json(F("MCNT"),		(double)this->VOLTAGE.GetCount_2_Store());
+
+	data += Var2Json(F("ELST"),		(double)this->GetLastEnergy());
 
 	interrupts();
 
@@ -303,9 +306,9 @@ void Meter::GetData(){
 	  if (result1 == this->MBNode.ku8MBSuccess)
 	  {
 		double voltage_usage      = (this->MBNode.getResponseBuffer(0x00) / 10.0f);
-		double current_usage      = (this->MBNode.getResponseBuffer(0x01) / (this->Divisor * 1000.000f));
-		double active_power       = (this->MBNode.getResponseBuffer(0x03) / (this->Divisor * 10.0f));
-		double active_energy      = (this->MBNode.getResponseBuffer(0x05) / (this->Divisor * 1000.0f));
+		double current_usage      = (this->MBNode.getResponseBuffer(0x01) / (this->Divisor * 1000.0f));		// to Amps
+		double active_power       = (this->MBNode.getResponseBuffer(0x03) / (this->Divisor * 10.0f));		// to Watts
+		double active_energy      = (this->MBNode.getResponseBuffer(0x05) / (this->Divisor * 1.0f));		// in W*h
 		double frequency          = (this->MBNode.getResponseBuffer(0x07) / 10.0f);
 		double power_factor       = (this->MBNode.getResponseBuffer(0x08) / 100.0f);
 		double over_power_alarm   = (this->MBNode.getResponseBuffer(0x09));
@@ -321,7 +324,7 @@ void Meter::GetData(){
 		debug_out(F("ACTIVE_ENERGY"), 														DEBUG_MAX_INFO, 1);
 		this->ACTIVE_ENERGY.AddMeas(	active_energy - this->PREV_active_energy);
 		debug_out(F("FREQUENCY"), 															DEBUG_MAX_INFO, 1);
-		this->FREQUENCY.NewMeas(		frequency,		1.0);
+		this->FREQUENCY.NewMeas(		frequency,		0.1);
 		debug_out(F("POWER_FACTOR"), 														DEBUG_MAX_INFO, 1);
 		this->POWER_FACTOR.NewMeas(		power_factor,	0.2);
 
@@ -334,7 +337,7 @@ void Meter::GetData(){
 	    this->CRCError();
 	  }
 
-	  if(this->VOLTAGE.Check_2_Store() || this->CURRENT_USAGE.Check_2_Store() || this->ACTIVE_POWER.Check_2_Store()){
+	  if(this->CURRENT_USAGE.Check_2_Store() || this->ACTIVE_POWER.Check_2_Store()){
 		  this->VOLTAGE.Accum_to_Store();
 		  this->CURRENT_USAGE.Accum_to_Store();
 		  this->ACTIVE_POWER.Accum_to_Store();
@@ -353,7 +356,7 @@ void Meter::GetData(){
 }
 
 double Meter::GetLastEnergy(){
-	return this->PREV_active_energy;
+	return this->PREV_active_energy/1000.0;				// W*h to kW*h units conversion
 }
 
 /*****************************************************************

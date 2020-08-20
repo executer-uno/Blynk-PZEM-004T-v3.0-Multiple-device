@@ -37,7 +37,7 @@
 	#define DEBUG_MED_INFO 	4
 	#define DEBUG_MAX_INFO 	5
 	// Wieviele Informationen sollenber die serielle Schnittstelle ausgegeben werden?
-	#define DEBUG DEBUG_MED_INFO
+	#define DEBUG DEBUG_WARNING
 
 	struct measure {
 		float 		max;
@@ -90,7 +90,7 @@
 	private:
 		uint32_t 		CRCerr;		// number of CRC errors
 		MyModbusMaster  MBNode;
-		double 			PREV_active_energy;
+		double 			PREV_active_energy;	// in W*h units
 
 	public:
 		float			CRCerrRate 	= 0.0;	// Rate of CRC errors (%)
@@ -105,7 +105,7 @@
 		measurement		POWER_FACTOR;
 
 		void   GetData();				// Get new measurements from device
-		double GetLastEnergy();			// Get last measured Energy counter
+		double GetLastEnergy();			// Get last measured Energy counter (kW*h units)
 		void   ResetEnergy();			// Reset energy counter
 		void   Clear();					// Push measured values to archive
 		void   Stored();				// Data stored to google spreadsheets and buffer should be cleared

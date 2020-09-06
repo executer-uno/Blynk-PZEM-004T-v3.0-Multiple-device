@@ -47,8 +47,8 @@ SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU
 
 namespace cfg {
 	int	debug 			= DEBUG;
-	float cycle			= 0.5;		//Sensor read cycle
-	int SendPeriod		= 240; 		//GSheets send period in seconds
+	float cycle			= 2.0;		//0.5;		//Sensor read cycle
+	int SendPeriod		= 300; 		//GSheets send period in seconds
 	int ReadPeriod		= 600;		//GSheets read parameters period in seconds
 }
 /*
@@ -124,6 +124,7 @@ void setup() {
   debug_out(F("Telnet protocol started."), 										DEBUG_ALWAYS, 1);
   debug_out(F("Telnet R for reboot"), 											DEBUG_ALWAYS, 1);
   debug_out(F("Telnet S for stop telnet"), 										DEBUG_ALWAYS, 1);
+  debug_out(F("Telnet Z for reset totalizers"),									DEBUG_ALWAYS, 1);
   debug_out(F("DEBUG LEVEL 'ALWAYS'   : 0"), 									DEBUG_ALWAYS, 1);
   debug_out(F("DEBUG LEVEL 'ERROR'    : 1"), 									DEBUG_ALWAYS, 1);
   debug_out(F("DEBUG LEVEL 'WARNING'  : 2"), 									DEBUG_ALWAYS, 1);
@@ -136,10 +137,10 @@ void setup() {
   // start Modbus/RS-485 serial communication
   digitalWrite(LED_BUILTIN, LOW);    			// turn the LED ON by making the voltage HIGH
 
-  PZEM_Meter[0].begin(pzemSlave1Addr, &pzem1Serial, 30, cfg::SendPeriod);
-  PZEM_Meter[1].begin(pzemSlave2Addr, &pzem1Serial, 30, cfg::SendPeriod);
-  PZEM_Meter[2].begin(pzemSlave3Addr, &pzem1Serial, 30, cfg::SendPeriod);
-  PZEM_Meter[3].begin(pzemSlave4Addr, &pzem1Serial, 30, cfg::SendPeriod);
+  PZEM_Meter[0].begin(pzemSlave1Addr, &pzem1Serial, 60, cfg::SendPeriod);
+  PZEM_Meter[1].begin(pzemSlave2Addr, &pzem1Serial, 60, cfg::SendPeriod);
+  PZEM_Meter[2].begin(pzemSlave3Addr, &pzem1Serial, 60, cfg::SendPeriod);
+  PZEM_Meter[3].begin(pzemSlave4Addr, &pzem1Serial, 60, cfg::SendPeriod);
 
   PZEM_Meter[0].ID = 1;
   PZEM_Meter[1].ID = 2;
@@ -190,9 +191,10 @@ void fetchCycleCall(){
 
 	PZEM_Meter[Mindex].GetData();
 
-	if(PZEM_Meter[Mindex].GetLastEnergy()>95.0){	// If more than 95 kW - reset counter
-		PZEM_Meter[Mindex].ResetEnergy();
+	if(PZEM_Meter[Mindex].GetLastEnergy()>95.0){	// If more than 95 kW - rise reset totalizer flag
+		PZEM_Meter[Mindex].NeedZeroing = true;
 	}
+
 	Mindex++;
 
 	if(Mindex>3){
@@ -221,8 +223,15 @@ void loop() {
 		  LastSend = millis();
 
 		  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
-
 	  }
+
+	  if(PZEM_Meter[i].NeedZeroing){								// If reset counter flag raised
+		  fetchCycle.detach();
+		  PZEM_Meter[i].ResetEnergy();
+		  delay(1000);
+		  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
+	  }
+
   }
 
   // check GSheets parameters update
@@ -231,7 +240,7 @@ void loop() {
 	  fetchCycle.detach();
 
 	  if(CheckGSheets()){
-		  debug_out(String("loop: Prepare to reboot from GSheets"), 												DEBUG_MED_INFO, 1);
+		  debug_out(String("loop: Prepare to reboot from GSheets"), 													DEBUG_MED_INFO, 1);
 		  Send2GSheets(&PZEM_Meter[0]);
 		  Send2GSheets(&PZEM_Meter[1]);
 		  Send2GSheets(&PZEM_Meter[2]);
@@ -239,6 +248,9 @@ void loop() {
 		  ESP.reset();
 	  }
 	  LastRead = millis();
+
+	  cfg::debug = DEBUG;										// Reset debug to default level after each GSheets connection
+	  debug_out(String("Debug level reset to default"),			 														DEBUG_ALWAYS, 1);
 
 	  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
   }
@@ -255,6 +267,30 @@ void loop() {
 			TelnetStream.println("Telnet protoclol stops.");
 			TelnetStream.flush();
 			TelnetStream.stop();
+			break;
+		case '0':
+			cfg::debug = 0;
+			break;
+		case '1':
+			cfg::debug = 1;
+			break;
+		case '2':
+			cfg::debug = 2;
+			break;
+		case '3':
+			cfg::debug = 3;
+			break;
+		case '4':
+			cfg::debug = 4;
+			break;
+		case '5':
+			cfg::debug = 5;
+			break;
+		case 'Z':
+			PZEM_Meter[0].NeedZeroing = true;
+			PZEM_Meter[1].NeedZeroing = true;
+			PZEM_Meter[2].NeedZeroing = true;
+			PZEM_Meter[3].NeedZeroing = true;
 			break;
 	  }
 
@@ -279,7 +315,13 @@ void loop() {
 			break;
 	  }
 
-  yield();
+	  if(millis()> (unsigned long)(10 * 24 * 3600 * 1000)){
+		  debug_out(String("Force restart after 10 days online"),			 										DEBUG_ALWAYS, 1);
+		  delay(5000);
+		  ESP.reset();
+	  }
+
+	  yield();
 }
 
 void Send2GSheets(Meter *PZMeter){

@@ -11,7 +11,7 @@
 
 #include "Definitions.h"
 
-
+extern SoftwareSerial pzem1Serial;
 
 namespace cfg {
 	extern int	debug;
@@ -206,6 +206,7 @@ Meter::Meter(){
 	this->CRCerr = 0;
 	this->Divisor = 1.0;
 	this->PREV_active_energy = -1.0;
+	this->NeedZeroing = false;
 }
 void Meter::begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial, unsigned int Tmin_sec, unsigned int Tmax_sec){
 	this->MBNode.begin(pzemSlaveAddr, *pzemSerial);
@@ -278,17 +279,28 @@ bool Meter::Check_2_Store(){
 	return ToStore;
 }
 void Meter::ResetEnergy() {
+
+  debug_out(F("Resetting Energy device ID="), 												DEBUG_MIN_INFO, 0);
+  debug_out(String(this->ID), 																DEBUG_MIN_INFO, 1);
+
+  //ESP.wdtDisable();     //disable watchdog during modbus read or else ESP crashes when no slave connected
+  // Its not a modbus command
+
   //The command to reset the slave's energy is (total 4 bytes):
   //Slave address + 0x42 + CRC check high byte + CRC check low byte.
-  static uint16_t resetCommand = 0x0042;
+  uint16_t u16CRC = 0xFFFF;
+  static uint8_t resetCommand = 0x42;
+  u16CRC = crc16_update(u16CRC, this->MBNode.getSlaveID());
+  u16CRC = crc16_update(u16CRC, resetCommand);
+  pzem1Serial.write(this->MBNode.getSlaveID());
+  pzem1Serial.write(resetCommand);
+  pzem1Serial.write(lowByte(u16CRC));
+  pzem1Serial.write(highByte(u16CRC));
 
-  debug_out(F("Resetting Energy"), 															DEBUG_MIN_INFO, 1);
-
-  ESP.wdtDisable();     //disable watchdog during modbus read or else ESP crashes when no slave connected
-  this->MBNode.send(resetCommand);
-  ESP.wdtEnable(1);    	//enable watchdog during modbus read
+  //ESP.wdtEnable(1);    	//enable watchdog during modbus read
 
   this->PREV_active_energy = 0.0;
+  this->NeedZeroing		   = false;
 }
 
 void Meter::GetData(){

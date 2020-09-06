@@ -96,6 +96,7 @@
 		float			CRCerrRate 	= 0.0;	// Rate of CRC errors (%)
 		float 			Divisor		= 1.0;  // Measurement head gain compensation
 		int				ID			= 0;
+		bool			NeedZeroing	= false;
 
 		measurement		VOLTAGE;
 		measurement		CURRENT_USAGE;

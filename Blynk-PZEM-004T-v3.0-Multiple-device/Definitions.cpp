@@ -349,7 +349,7 @@ void Meter::GetData(){
 	    this->CRCError();
 	  }
 
-	  if(this->CURRENT_USAGE.Check_2_Store() || this->ACTIVE_POWER.Check_2_Store()){
+	  if(this->CURRENT_USAGE.Check_2_Store() || this->ACTIVE_POWER.Check_2_Store()){		// New cycle only by current or power changes dramatically
 		  this->VOLTAGE.Accum_to_Store();
 		  this->CURRENT_USAGE.Accum_to_Store();
 		  this->ACTIVE_POWER.Accum_to_Store();
@@ -403,6 +403,15 @@ String Float2String(const double value, uint8_t digits, uint8_t size) {
  *****************************************************************/
 void debug_out(const String& text, const int level, const bool linebreak) {
 	if (level <= cfg::debug) {
+
+		if(level==1){
+			Serial.print("ERR ");
+			TelnetStream.print("ERR ");
+		}
+		if(level==2){
+			Serial.print("WRN ");
+			TelnetStream.print("WRN ");
+		}
 
 		if (linebreak) {
 			Serial.println(text);

@@ -82,6 +82,9 @@ const char data_first_part[] PROGMEM = "{\"sensordatavalues\":";
 unsigned long	LastSend;
 unsigned long	LastRead;
 
+bool			TickFlag;		// Flag to tick from interrupt to main loop
+unsigned long	MissedTicks;	// Missed ticks counter
+
 void setup() {
   Serial.begin(76800);
 
@@ -125,6 +128,7 @@ void setup() {
   debug_out(F("Telnet R for reboot"), 											DEBUG_ALWAYS, 1);
   debug_out(F("Telnet S for stop telnet"), 										DEBUG_ALWAYS, 1);
   debug_out(F("Telnet Z for reset totalizers"),									DEBUG_ALWAYS, 1);
+  debug_out(F("Telnet ? for help and report"),									DEBUG_ALWAYS, 1);
   debug_out(F("DEBUG LEVEL 'ALWAYS'   : 0"), 									DEBUG_ALWAYS, 1);
   debug_out(F("DEBUG LEVEL 'ERROR'    : 1"), 									DEBUG_ALWAYS, 1);
   debug_out(F("DEBUG LEVEL 'WARNING'  : 2"), 									DEBUG_ALWAYS, 1);
@@ -189,9 +193,21 @@ void changeAddress(uint8_t OldslaveAddr, uint8_t NewslaveAddr)
 // Time interrupt cycle
 void fetchCycleCall(){
 
+	if(TickFlag) {MissedTicks++;}
+	TickFlag = true;
+
+	ArduinoOTA.handle();
+}
+
+// Free loop
+void loop() {
+
+  ArduinoOTA.handle();
+
+  if(TickFlag){
 	PZEM_Meter[Mindex].GetData();
 
-	if(PZEM_Meter[Mindex].GetLastEnergy()>95.0){	// If more than 95 kW - rise reset totalizer flag
+	if(PZEM_Meter[Mindex].GetLastEnergy()>95.0 && PZEM_Meter[Mindex].GetLastEnergy()<1000.0 ){	// If more than 95 kW - rise reset totalizer flag (if more than 1000kW - likely wrong readings)
 		PZEM_Meter[Mindex].NeedZeroing = true;
 	}
 
@@ -203,56 +219,54 @@ void fetchCycleCall(){
 		digitalWrite(LED_BUILTIN, HIGH);    // turn the LED OFF by making the voltage HIGH
 		Mindex = 0;
 	}
-
-	ArduinoOTA.handle();
-}
-
-// Free loop
-void loop() {
-
-  ArduinoOTA.handle();
-
-  for(int i = 0; i<=3; i++){										// 3! 0 is for debug
-	  if(PZEM_Meter[i].Check_2_Store()){
-
-		  fetchCycle.detach();
-
-		  debug_out(String("loop: FreeHeap=") + String(ESP.getFreeHeap()), 												DEBUG_MED_INFO, 1);
-
-		  Send2GSheets(&PZEM_Meter[i]);
-		  LastSend = millis();
-
-		  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
-	  }
-
-	  if(PZEM_Meter[i].NeedZeroing){								// If reset counter flag raised
-		  fetchCycle.detach();
-		  PZEM_Meter[i].ResetEnergy();
-		  delay(1000);
-		  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
-	  }
-
+	TickFlag = false;
   }
+  else {
 
-  // check GSheets parameters update
-  if((millis() - LastRead)/1000 > (unsigned int)cfg::ReadPeriod){
 
-	  fetchCycle.detach();
 
-	  if(CheckGSheets()){
-		  debug_out(String("loop: Prepare to reboot from GSheets"), 													DEBUG_MED_INFO, 1);
-		  Send2GSheets(&PZEM_Meter[0]);
-		  Send2GSheets(&PZEM_Meter[1]);
-		  Send2GSheets(&PZEM_Meter[2]);
-		  Send2GSheets(&PZEM_Meter[3]);
-		  ESP.reset();
+	  for(int i = 0; i<=3; i++){										// 3! 0 is for debug
+		  if(PZEM_Meter[i].Check_2_Store()){
+
+			  fetchCycle.detach();
+
+			  debug_out(String("loop: FreeHeap=") + String(ESP.getFreeHeap()), 												DEBUG_MED_INFO, 1);
+
+			  Send2GSheets(&PZEM_Meter[i]);
+			  LastSend = millis();
+
+			  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
+		  }
+
+		  if(PZEM_Meter[i].NeedZeroing){								// If reset counter flag raised
+			  fetchCycle.detach();
+			  PZEM_Meter[i].ResetEnergy();
+			  delay(1000);
+			  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
+		  }
+
 	  }
-	  LastRead = millis();
 
-	  cfg::debug = DEBUG;										// Reset debug to default level after each GSheets connection
-	  debug_out(String("Debug level reset to default"),			 														DEBUG_ALWAYS, 1);
+	  // check GSheets parameters update
+	  if((millis() - LastRead)/1000 > (unsigned int)cfg::ReadPeriod){
 
-	  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
+		  fetchCycle.detach();
+
+		  if(CheckGSheets()){
+			  debug_out(String("loop: Prepare to reboot from GSheets"), 													DEBUG_MED_INFO, 1);
+			  Send2GSheets(&PZEM_Meter[0]);
+			  Send2GSheets(&PZEM_Meter[1]);
+			  Send2GSheets(&PZEM_Meter[2]);
+			  Send2GSheets(&PZEM_Meter[3]);
+			  ESP.reset();
+		  }
+		  LastRead = millis();
+
+		  cfg::debug = DEBUG;										// Reset debug to default level after each GSheets connection
+		  debug_out(String("Debug level reset to default"),			 														DEBUG_ALWAYS, 1);
+
+		  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
+	  }
   }
 
   // Proceed Telnet
@@ -291,6 +305,24 @@ void loop() {
 			PZEM_Meter[1].NeedZeroing = true;
 			PZEM_Meter[2].NeedZeroing = true;
 			PZEM_Meter[3].NeedZeroing = true;
+			break;
+		case '?':
+			debug_out(F("Telnet R for reboot"), 																	DEBUG_ALWAYS, 1);
+			debug_out(F("Telnet S for stop telnet"), 																DEBUG_ALWAYS, 1);
+			debug_out(F("Telnet Z for reset totalizers"),															DEBUG_ALWAYS, 1);
+			debug_out(F("Telnet ? for help and report"),															DEBUG_ALWAYS, 1);
+			debug_out(F("DEBUG LEVEL 'ALWAYS'   : 0"), 																DEBUG_ALWAYS, 1);
+			debug_out(F("DEBUG LEVEL 'ERROR'    : 1"), 																DEBUG_ALWAYS, 1);
+			debug_out(F("DEBUG LEVEL 'WARNING'  : 2"), 																DEBUG_ALWAYS, 1);
+			debug_out(F("DEBUG LEVEL 'MIN_INFO' : 3"), 																DEBUG_ALWAYS, 1);
+			debug_out(F("DEBUG LEVEL 'MED_INFO' : 4"), 																DEBUG_ALWAYS, 1);
+			debug_out(F("DEBUG LEVEL 'MAX_INFO' : 5"), 																DEBUG_ALWAYS, 1);
+
+			debug_out(F(""), 																						DEBUG_ALWAYS, 1);
+
+			debug_out(String("Missed ticks counter delta: ")+String(MissedTicks),			 						DEBUG_ALWAYS, 1);
+			MissedTicks = 0;
+
 			break;
 	  }
 
@@ -454,15 +486,44 @@ void SetupGSheets(){
 	}
 	else
 	{
+		int DivTemp = 0;
+
 		pzemSlave1Addr = GetGSheetsRange("Addr01").toInt();
 		pzemSlave2Addr = GetGSheetsRange("Addr02").toInt();
 		pzemSlave3Addr = GetGSheetsRange("Addr03").toInt();
 		pzemSlave4Addr = GetGSheetsRange("Addr04").toInt();
 
-		PZEM_Meter[0].Divisor = GetGSheetsRange("Gain01").toInt();
-		PZEM_Meter[1].Divisor = GetGSheetsRange("Gain02").toInt();
-		PZEM_Meter[2].Divisor = GetGSheetsRange("Gain03").toInt();
-		PZEM_Meter[3].Divisor = GetGSheetsRange("Gain04").toInt();
+		DivTemp = GetGSheetsRange("Gain01").toInt();
+		if (DivTemp >= 1){
+			PZEM_Meter[0].Divisor = DivTemp;
+		}
+		else {
+			debug_out(F("Sensor #1 divisor is less than 1."),	 										DEBUG_ERROR, 1);
+		}
+
+		DivTemp = GetGSheetsRange("Gain02").toInt();
+		if (DivTemp >= 1){
+			PZEM_Meter[1].Divisor = DivTemp;
+		}
+		else {
+			debug_out(F("Sensor #2 divisor is less than 1."),	 										DEBUG_ERROR, 1);
+		}
+
+		DivTemp = GetGSheetsRange("Gain03").toInt();
+		if (DivTemp >= 1){
+			PZEM_Meter[2].Divisor = DivTemp;
+		}
+		else {
+			debug_out(F("Sensor #3 divisor is less than 1."),	 										DEBUG_ERROR, 1);
+		}
+
+		DivTemp = GetGSheetsRange("Gain04").toInt();
+		if (DivTemp >= 1){
+			PZEM_Meter[3].Divisor = DivTemp;
+		}
+		else {
+			debug_out(F("Sensor #4 divisor is less than 1."),	 										DEBUG_ERROR, 1);
+		}
 
 		cfg::SendPeriod	 = GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
 	}
@@ -477,6 +538,12 @@ void SetupGSheets(){
 
 	if(!pzemSlave1Addr || !pzemSlave2Addr || !pzemSlave3Addr || !pzemSlave4Addr){
 		debug_out(F("SetupGSheets: No device addresses. Reboot."), 										DEBUG_ERROR, 1);
+		Serial.flush();
+		ESP.reset();
+	}
+
+	if((PZEM_Meter[0].Divisor<1.0) || (PZEM_Meter[1].Divisor<1.0) || (PZEM_Meter[2].Divisor<1.0) || (PZEM_Meter[3].Divisor<1.0)){
+		debug_out(F("SetupGSheets: Not all divisors defined. Reboot."), 								DEBUG_ERROR, 1);
 		Serial.flush();
 		ESP.reset();
 	}

@@ -6,7 +6,7 @@
  */
 
 #include <Arduino.h>
-#include <TelnetStream.h>
+//#include <TelnetStream.h>
 
 
 #include "Definitions.h"
@@ -406,19 +406,19 @@ void debug_out(const String& text, const int level, const bool linebreak) {
 
 		if(level==1){
 			Serial.print("ERR ");
-			TelnetStream.print("ERR ");
+			//TelnetStream.print("ERR ");
 		}
 		if(level==2){
 			Serial.print("WRN ");
-			TelnetStream.print("WRN ");
+			//TelnetStream.print("WRN ");
 		}
 
 		if (linebreak) {
 			Serial.println(text);
-			TelnetStream.println(text);
+			//TelnetStream.println(text);
 		} else {
 			Serial.print(text);
-			TelnetStream.print(text);
+			//TelnetStream.print(text);
 		}
 	}
 }

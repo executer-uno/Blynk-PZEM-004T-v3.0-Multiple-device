@@ -121,6 +121,7 @@ void setup() {
   ArduinoOTA.setHostname(OTA_HOSTNAME);
   setupOTA(OTA_HOSTNAME);
 
+  /*
   // Proceed Telnet
   TelnetStream.begin();
   delay(5000);
@@ -135,7 +136,7 @@ void setup() {
   debug_out(F("DEBUG LEVEL 'MIN_INFO' : 3"), 									DEBUG_ALWAYS, 1);
   debug_out(F("DEBUG LEVEL 'MED_INFO' : 4"), 									DEBUG_ALWAYS, 1);
   debug_out(F("DEBUG LEVEL 'MAX_INFO' : 5"), 									DEBUG_ALWAYS, 1);
-
+  */
   SetupGSheets();
 
   // start Modbus/RS-485 serial communication
@@ -268,7 +269,7 @@ void loop() {
 		  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
 	  }
   }
-
+/*
   // Proceed Telnet
 	  switch (TelnetStream.read()) {
 		case 'R':
@@ -325,7 +326,7 @@ void loop() {
 
 			break;
 	  }
-
+*/
 	  switch (Serial.read()) {
 		case '0':
 			cfg::debug = 0;

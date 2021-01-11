@@ -13,7 +13,7 @@
 
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-#include <TelnetStream.h>
+//#include <TelnetStream.h>
 
 #if defined(ESP32_RTOS) && defined(ESP32)
 void taskOne( void * parameter )

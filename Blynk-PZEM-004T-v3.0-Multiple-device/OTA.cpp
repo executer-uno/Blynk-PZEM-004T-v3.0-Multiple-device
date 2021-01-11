@@ -77,7 +77,7 @@ void setupOTA(const char* nameprefix) {
   });
 
   ArduinoOTA.begin();
-  TelnetStream.begin();
+  //TelnetStream.begin();
 
   debug_out(F("OTA Initialized: "), 				DEBUG_ALWAYS, 1);
   debug_out(F("IP address: "), 						DEBUG_ALWAYS, 0);

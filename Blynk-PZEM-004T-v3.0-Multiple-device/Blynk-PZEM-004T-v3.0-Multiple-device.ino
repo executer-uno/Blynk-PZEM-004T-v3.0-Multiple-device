@@ -45,6 +45,18 @@ SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU
 
 #include "OTA.h"					// OTA standard functions added
 
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <Hash.h>
+#include <FS.h>
+#include "HTML.h"
+
+AsyncWebServer server(80);
+
+const char* PARAM_STRING = "inputString";
+const char* PARAM_INT = "inputInt";
+const char* PARAM_FLOAT = "inputFloat";
+
 namespace cfg {
 	int	debug 			= DEBUG;
 	float cycle			= 2.0;		//0.5;		//Sensor read cycle
@@ -85,6 +97,72 @@ unsigned long	LastRead;
 bool			TickFlag;		// Flag to tick from interrupt to main loop
 unsigned long	MissedTicks;	// Missed ticks counter
 
+
+
+
+
+
+void notFound(AsyncWebServerRequest *request) {
+  request->send(404, "text/plain", "Not found");
+}
+
+String readFile(fs::FS &fs, const char * path){
+  Serial.printf("Reading file: %s\r\n", path);
+  File file = fs.open(path, "r");
+  if(!file || file.isDirectory()){
+    Serial.println("- empty file or failed to open file");
+    return String();
+  }
+  Serial.println("- read from file:");
+  String fileContent;
+  while(file.available()){
+    fileContent+=String((char)file.read());
+  }
+  Serial.println(fileContent);
+  return fileContent;
+}
+
+void writeFile(fs::FS &fs, const char * path, const char * message){
+  Serial.printf("Writing file: %s\r\n", path);
+  File file = fs.open(path, "w");
+  if(!file){
+    Serial.println("- failed to open file for writing");
+    return;
+  }
+  if(file.print(message)){
+    Serial.println("- file written");
+  } else {
+    Serial.println("- write failed");
+  }
+}
+
+// Replaces placeholder with stored values
+String processor(const String& var){
+  //Serial.println(var);
+  if(var == "inputString"){
+    return readFile(SPIFFS, "/inputString.txt");
+  }
+  else if(var == "inputInt"){
+    return readFile(SPIFFS, "/inputInt.txt");
+  }
+  else if(var == "inputFloat"){
+    return readFile(SPIFFS, "/inputFloat.txt");
+  }
+  return String();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 void setup() {
   Serial.begin(76800);
 
@@ -118,8 +196,46 @@ void setup() {
       //resetEnergy(pzemSlaveAddr);
   */
 
+
   ArduinoOTA.setHostname(OTA_HOSTNAME);
   setupOTA(OTA_HOSTNAME);
+
+  if(!SPIFFS.begin()){
+    Serial.println("An Error has occurred while mounting SPIFFS");
+  }
+  // Send web page with input fields to client
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html, processor);
+  });
+
+  // Send a GET request to <ESP_IP>/get?inputString=<inputMessage>
+  server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage;
+    // GET inputString value on <ESP_IP>/get?inputString=<inputMessage>
+    if (request->hasParam(PARAM_STRING)) {
+      inputMessage = request->getParam(PARAM_STRING)->value();
+      writeFile(SPIFFS, "/inputString.txt", inputMessage.c_str());
+    }
+    // GET inputInt value on <ESP_IP>/get?inputInt=<inputMessage>
+    else if (request->hasParam(PARAM_INT)) {
+      inputMessage = request->getParam(PARAM_INT)->value();
+      writeFile(SPIFFS, "/inputInt.txt", inputMessage.c_str());
+    }
+    // GET inputFloat value on <ESP_IP>/get?inputFloat=<inputMessage>
+    else if (request->hasParam(PARAM_FLOAT)) {
+      inputMessage = request->getParam(PARAM_FLOAT)->value();
+      writeFile(SPIFFS, "/inputFloat.txt", inputMessage.c_str());
+    }
+    else {
+      inputMessage = "No message sent";
+    }
+    Serial.println(inputMessage);
+    request->send(200, "text/text", inputMessage);
+  });
+  server.onNotFound(notFound);
+  server.begin();
+
+
 
 
   SetupGSheets();

@@ -121,31 +121,16 @@ void setup() {
   ArduinoOTA.setHostname(OTA_HOSTNAME);
   setupOTA(OTA_HOSTNAME);
 
-  /*
-  // Proceed Telnet
-  TelnetStream.begin();
-  delay(5000);
-  debug_out(F("Telnet protocol started."), 										DEBUG_ALWAYS, 1);
-  debug_out(F("Telnet R for reboot"), 											DEBUG_ALWAYS, 1);
-  debug_out(F("Telnet S for stop telnet"), 										DEBUG_ALWAYS, 1);
-  debug_out(F("Telnet Z for reset totalizers"),									DEBUG_ALWAYS, 1);
-  debug_out(F("Telnet ? for help and report"),									DEBUG_ALWAYS, 1);
-  debug_out(F("DEBUG LEVEL 'ALWAYS'   : 0"), 									DEBUG_ALWAYS, 1);
-  debug_out(F("DEBUG LEVEL 'ERROR'    : 1"), 									DEBUG_ALWAYS, 1);
-  debug_out(F("DEBUG LEVEL 'WARNING'  : 2"), 									DEBUG_ALWAYS, 1);
-  debug_out(F("DEBUG LEVEL 'MIN_INFO' : 3"), 									DEBUG_ALWAYS, 1);
-  debug_out(F("DEBUG LEVEL 'MED_INFO' : 4"), 									DEBUG_ALWAYS, 1);
-  debug_out(F("DEBUG LEVEL 'MAX_INFO' : 5"), 									DEBUG_ALWAYS, 1);
-  */
+
   SetupGSheets();
 
   // start Modbus/RS-485 serial communication
   digitalWrite(LED_BUILTIN, LOW);    			// turn the LED ON by making the voltage HIGH
 
-  PZEM_Meter[0].begin(pzemSlave1Addr, &pzem1Serial, 60, cfg::SendPeriod);
-  PZEM_Meter[1].begin(pzemSlave2Addr, &pzem1Serial, 60, cfg::SendPeriod);
-  PZEM_Meter[2].begin(pzemSlave3Addr, &pzem1Serial, 60, cfg::SendPeriod);
-  PZEM_Meter[3].begin(pzemSlave4Addr, &pzem1Serial, 60, cfg::SendPeriod);
+  PZEM_Meter[0].begin(pzemSlave1Addr, &pzem1Serial, 300, cfg::SendPeriod);
+  PZEM_Meter[1].begin(pzemSlave2Addr, &pzem1Serial, 300, cfg::SendPeriod);
+  PZEM_Meter[2].begin(pzemSlave3Addr, &pzem1Serial, 300, cfg::SendPeriod);
+  PZEM_Meter[3].begin(pzemSlave4Addr, &pzem1Serial, 300, cfg::SendPeriod);
 
   PZEM_Meter[0].ID = 1;
   PZEM_Meter[1].ID = 2;
@@ -269,64 +254,7 @@ void loop() {
 		  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
 	  }
   }
-/*
-  // Proceed Telnet
-	  switch (TelnetStream.read()) {
-		case 'R':
-			TelnetStream.println("ESP reboots...");
-			delay(1000);
-			TelnetStream.stop();
-			ESP.reset();
-			break;
-		case 'S':
-			TelnetStream.println("Telnet protoclol stops.");
-			TelnetStream.flush();
-			TelnetStream.stop();
-			break;
-		case '0':
-			cfg::debug = 0;
-			break;
-		case '1':
-			cfg::debug = 1;
-			break;
-		case '2':
-			cfg::debug = 2;
-			break;
-		case '3':
-			cfg::debug = 3;
-			break;
-		case '4':
-			cfg::debug = 4;
-			break;
-		case '5':
-			cfg::debug = 5;
-			break;
-		case 'Z':
-			PZEM_Meter[0].NeedZeroing = true;
-			PZEM_Meter[1].NeedZeroing = true;
-			PZEM_Meter[2].NeedZeroing = true;
-			PZEM_Meter[3].NeedZeroing = true;
-			break;
-		case '?':
-			debug_out(F("Telnet R for reboot"), 																	DEBUG_ALWAYS, 1);
-			debug_out(F("Telnet S for stop telnet"), 																DEBUG_ALWAYS, 1);
-			debug_out(F("Telnet Z for reset totalizers"),															DEBUG_ALWAYS, 1);
-			debug_out(F("Telnet ? for help and report"),															DEBUG_ALWAYS, 1);
-			debug_out(F("DEBUG LEVEL 'ALWAYS'   : 0"), 																DEBUG_ALWAYS, 1);
-			debug_out(F("DEBUG LEVEL 'ERROR'    : 1"), 																DEBUG_ALWAYS, 1);
-			debug_out(F("DEBUG LEVEL 'WARNING'  : 2"), 																DEBUG_ALWAYS, 1);
-			debug_out(F("DEBUG LEVEL 'MIN_INFO' : 3"), 																DEBUG_ALWAYS, 1);
-			debug_out(F("DEBUG LEVEL 'MED_INFO' : 4"), 																DEBUG_ALWAYS, 1);
-			debug_out(F("DEBUG LEVEL 'MAX_INFO' : 5"), 																DEBUG_ALWAYS, 1);
 
-			debug_out(F(""), 																						DEBUG_ALWAYS, 1);
-
-			debug_out(String("Missed ticks counter delta: ")+String(MissedTicks),			 						DEBUG_ALWAYS, 1);
-			MissedTicks = 0;
-
-			break;
-	  }
-*/
 	  switch (Serial.read()) {
 		case '0':
 			cfg::debug = 0;

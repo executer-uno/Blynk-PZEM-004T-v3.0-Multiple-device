@@ -6,7 +6,6 @@
  */
 
 #include <Arduino.h>
-//#include <TelnetStream.h>
 
 
 #include "Definitions.h"

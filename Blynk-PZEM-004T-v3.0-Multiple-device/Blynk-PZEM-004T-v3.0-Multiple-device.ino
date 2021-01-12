@@ -194,7 +194,7 @@ void loop() {
 	PZEM_Meter[Mindex].GetData();
 
 	if(PZEM_Meter[Mindex].GetLastEnergy()>95.0 && PZEM_Meter[Mindex].GetLastEnergy()<1000.0 ){	// If more than 95 kW - rise reset totalizer flag (if more than 1000kW - likely wrong readings)
-		PZEM_Meter[Mindex].NeedZeroing = true;
+		//PZEM_Meter[Mindex].NeedZeroing = true;
 	}
 
 	Mindex++;

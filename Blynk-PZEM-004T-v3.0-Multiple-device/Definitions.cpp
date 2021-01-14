@@ -326,6 +326,11 @@ void Meter::GetData(){
 
 		if(this->PREV_active_energy < 0.0){ this->PREV_active_energy = active_energy;}		// Initialize PREV value
 
+		double active_energy_fix = active_energy - this->PREV_active_energy;
+		if(active_energy_fix < 0.0){														// Fix totalizer overflow
+			active_energy_fix += float(UINT16_MAX) / (this->Divisor * 1.0f);
+		}
+
 		debug_out(F("VOLTAGE"), 															DEBUG_MAX_INFO, 1);
 		this->VOLTAGE.NewMeas(			voltage_usage,	5.0);
 		debug_out(F("CURRENT_USAGE"), 														DEBUG_MAX_INFO, 1);
@@ -333,7 +338,7 @@ void Meter::GetData(){
 		debug_out(F("ACTIVE_POWER"), 														DEBUG_MAX_INFO, 1);
 		this->ACTIVE_POWER.NewMeas(		active_power,	50.0);
 		debug_out(F("ACTIVE_ENERGY"), 														DEBUG_MAX_INFO, 1);
-		this->ACTIVE_ENERGY.AddMeas(	active_energy - this->PREV_active_energy);
+		this->ACTIVE_ENERGY.AddMeas(	active_energy_fix);
 		debug_out(F("FREQUENCY"), 															DEBUG_MAX_INFO, 1);
 		this->FREQUENCY.NewMeas(		frequency,		0.1);
 		debug_out(F("POWER_FACTOR"), 														DEBUG_MAX_INFO, 1);

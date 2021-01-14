@@ -329,7 +329,7 @@ void Meter::GetData(){
 		double active_energy_fix = active_energy - this->PREV_active_energy;
 
 		if(active_energy_fix < 0.0){														// Fix totalizer overflow
-			active_energy_fix += float(UINT16_MAX);
+			active_energy_fix += float(UINT16_MAX) / (this->Divisor * 1.0f);
 		}
 
 		debug_out(F("VOLTAGE"), 															DEBUG_MAX_INFO, 1);

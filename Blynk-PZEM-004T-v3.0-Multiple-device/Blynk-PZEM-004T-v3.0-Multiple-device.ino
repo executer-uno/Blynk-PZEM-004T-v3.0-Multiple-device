@@ -246,7 +246,8 @@ void setup() {
   server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html, processor);
   });
-
+  server.on("/reboot", handleReboot);
+  server.onNotFound(handleNotFound);
 
 
 
@@ -421,27 +422,6 @@ void loop() {
 			  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
 		  }
 
-	  }
-
-	  // check GSheets parameters update
-	  if((millis() - LastRead)/1000 > (unsigned int)cfg::ReadPeriod){
-
-		  fetchCycle.detach();
-
-		  if(CheckGSheets()){
-			  debug_out(String("loop: Prepare to reboot from GSheets"), 													DEBUG_MED_INFO, 1);
-			  Send2GSheets(&PZEM_Meter[0]);
-			  Send2GSheets(&PZEM_Meter[1]);
-			  Send2GSheets(&PZEM_Meter[2]);
-			  Send2GSheets(&PZEM_Meter[3]);
-			  ESP.reset();
-		  }
-		  LastRead = millis();
-
-		  cfg::debug = DEBUG;										// Reset debug to default level after each GSheets connection
-		  debug_out(String("Debug level reset to default"),			 														DEBUG_ALWAYS, 1);
-
-		  fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
 	  }
   }
 
@@ -705,4 +685,37 @@ String GetGSheetsRange(String Range){
 		debug_out(F("GetGSheetsRange: GET data fails. "), DEBUG_MIN_INFO, 1);
 	}
 	return "";
+}
+
+
+/** Handle the reboot request from web server */
+void handleReboot(AsyncWebServerRequest *request) {
+  Serial.println("ESP Reboot from web server");
+  server.end(); // Stop is needed because we sent no content length
+  ESP.restart();
+}
+
+
+void handleNotFound(AsyncWebServerRequest *request) {
+
+  String message = F("File Not Found\n\n");
+  message += F("URI: ");
+  message += request->url();
+  message += F("\nMethod: ");
+  message += (request->method() == HTTP_GET) ? "GET" : "POST";
+  message += F("\nArguments: ");
+  message += request->args();
+  message += F("\n");
+
+  for (uint8_t i = 0; i < request->args(); i++) {
+    message += String(F(" ")) + request->argName(i) + F(": ") + request->arg(i) + F("\n");
+  }
+
+  AsyncWebServerResponse *response = request->beginResponse(404, "text/plain", message); //Sends 404 File Not Found
+  response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  response->addHeader("Pragma", "no-cache");
+  response->addHeader("Expires", "-1");
+
+  request->send(response);
+
 }

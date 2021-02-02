@@ -58,10 +58,10 @@ const char* PARAM_INT = "inputInt";
 const char* PARAM_FLOAT = "inputFloat";
 
 namespace cfg {
-	int	debug 			= DEBUG;
-	float cycle			= 2.0;		//0.5;		//Sensor read cycle
-	int SendPeriod		= 300; 		//GSheets send period in seconds
-	int ReadPeriod		= 600;		//GSheets read parameters period in seconds
+	int		debug 			= DEBUG;
+	float 	cycle			= 2.0;		//0.5;		//Sensor read cycle
+	int 	SendPeriod		= 300; 		// GSheets send period in seconds
+	bool	OK				= false;	// Configuration initialized and can be used
 }
 /*
    This is the address of Pzem devices on the network. Each pzem device has to set unique
@@ -74,6 +74,13 @@ static uint8_t pzemSlave1Addr;
 static uint8_t pzemSlave2Addr;
 static uint8_t pzemSlave3Addr;
 static uint8_t pzemSlave4Addr;
+
+String pzemSlave1Tag;
+String pzemSlave2Tag;
+String pzemSlave3Tag;
+String pzemSlave4Tag;
+
+
 
 Meter	PZEM_Meter[4];
 
@@ -139,15 +146,37 @@ void writeFile(fs::FS &fs, const char * path, const char * message){
 // Replaces placeholder with stored values
 String processor(const String& var){
   //Serial.println(var);
-  if(var == "inputString"){
-    return readFile(SPIFFS, "/inputString.txt");
+  if(var == "DevTag1"){
+    return pzemSlave1Tag;
   }
-  else if(var == "inputInt"){
-    return readFile(SPIFFS, "/inputInt.txt");
+  else if(var == "DevAdr1"){
+    return pzemSlave1Addr;
   }
-  else if(var == "inputFloat"){
-    return readFile(SPIFFS, "/inputFloat.txt");
+  else if(var == "DevGain1"){
+    return PZEM_Meter[0].Divisor;
   }
+  else if(var == "DevTag2"){
+    return pzemSlave2Tag;
+  }
+  else if(var == "DevAdr2"){
+    return pzemSlave2Addr;
+  }
+  else if(var == "DevGain2"){
+    return PZEM_Meter[1].Divisor;
+  }
+  else if(var == "DevTag3"){
+	return pzemSlave3Tag;
+  }
+  else if(var == "DevAdr3"){
+	return pzemSlave3Addr;
+  }
+  else if(var == "DevGain3"){
+	return PZEM_Meter[2].Divisor;
+  }
+  else if(var == "MaxSendPeriod"){
+	return (cfg::SendPeriod / 60.0);
+  }
+
   return String();
 }
 
@@ -203,10 +232,49 @@ void setup() {
   if(!SPIFFS.begin()){
     Serial.println("An Error has occurred while mounting SPIFFS");
   }
-  // Send web page with input fields to client
+
+  // Get configuration from SPIFFS
+  ReadConfig();
+
+  Serial.print("AsyncWebServer setup begins.");
+  // Send main web page index.html to client
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html, processor);
   });
+
+  // Send configuration web page config.html to client
+  server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html, processor);
+  });
+
+
+
+
+
+  // Send a GET request to <ESP_IP>/update?output=<inputMessage1>&state=<inputMessage2>
+  server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage1;
+    String inputMessage2;
+    // GET input1 value on <ESP_IP>/update?output=<inputMessage1>&state=<inputMessage2>
+    if (request->hasParam("Name") && request->hasParam("Value")) {
+      inputMessage1 = request->getParam("Name")->value();
+      inputMessage2 = request->getParam("Value")->value();
+      digitalWrite(inputMessage1.toInt(), inputMessage2.toInt());
+    }
+    else {
+      inputMessage1 = "No message sent";
+      inputMessage2 = "No message sent";
+    }
+    Serial.print("GPIO: ");
+    Serial.print(inputMessage1);
+    Serial.print(" - Set to: ");
+    Serial.println(inputMessage2);
+    request->send(200, "text/plain", "OK");
+  });
+
+
+
+
 
   // Send a GET request to <ESP_IP>/get?inputString=<inputMessage>
   server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
@@ -235,12 +303,17 @@ void setup() {
   server.onNotFound(notFound);
   server.begin();
 
+  Serial.println(" Done.");
 
+  // Return if no consistent configuration present
+  if(!cfg::OK){
+	  Serial.print("Configuration inconsistent - Modbus terminated.");
+	  return;
+  }
 
-
-  SetupGSheets();
 
   // start Modbus/RS-485 serial communication
+  Serial.print("Configure Modbus communication.");
   digitalWrite(LED_BUILTIN, LOW);    			// turn the LED ON by making the voltage HIGH
 
   PZEM_Meter[0].begin(pzemSlave1Addr, &pzem1Serial, 300, cfg::SendPeriod);
@@ -254,15 +327,16 @@ void setup() {
   PZEM_Meter[3].ID = 4;
 
   digitalWrite(LED_BUILTIN, HIGH);    			// turn the LED ON by making the voltage HIGH
+  Serial.println(" Done.");
 
   LastSend = millis();
   LastRead = millis();
 
+  Serial.println("Start Modbus communication.");
   fetchCycle.attach(cfg::cycle, fetchCycleCall);			// Cyclic interrupt to call sensor data
 
   debug_out(F("Setup done."), 													DEBUG_ALWAYS, 1);
   debug_out(String("SendPeriod=") + String(cfg::SendPeriod),					DEBUG_ALWAYS, 1);
-  debug_out(String("ReadPeriod=") + String(cfg::ReadPeriod),					DEBUG_ALWAYS, 1);
   debug_out(F("===================================================="), 			DEBUG_ALWAYS, 1);
 
 }
@@ -484,114 +558,56 @@ void Send2GSheets(Meter *PZMeter){
 		debug_out(F("Send2GSheets Client object deleted"), 												DEBUG_MED_INFO, 1);
 }
 
-void SetupGSheets(){
+void ReadConfig(){
 
-	// Connect to spreadsheet
-	client = new HTTPSRedirect(httpsPort);
-	client->setInsecure();											// Important row! Not works without (no connection establish)
-	client->setPrintResponseBody(false);
-	client->setContentTypeHeader("application/json");
+	debug_out(F("ReadConfig. Read device configuration from SPIFFS"), 												DEBUG_MED_INFO, 1);
 
-	debug_out(F("SetupGSheets: Client object created"), 												DEBUG_MED_INFO, 1);
 
-	if (client != nullptr){
-		if (!client->connected()){
+	pzemSlave1Addr = readFile(SPIFFS, "/pzemSlave1Addr.txt").toInt();
+	pzemSlave2Addr = readFile(SPIFFS, "/pzemSlave2Addr.txt").toInt();
+	pzemSlave3Addr = readFile(SPIFFS, "/pzemSlave3Addr.txt").toInt();
+	pzemSlave4Addr = readFile(SPIFFS, "/pzemSlave4Addr.txt").toInt();
 
-			// Try to connect for a maximum of 10 times
-			for (int i=0; i<10; i++){
+	pzemSlave1Tag  = readFile(SPIFFS, "/pzemSlave1Tag.txt");
+	pzemSlave2Tag  = readFile(SPIFFS, "/pzemSlave2Tag.txt");
+	pzemSlave3Tag  = readFile(SPIFFS, "/pzemSlave3Tag.txt");
+	pzemSlave4Tag  = readFile(SPIFFS, "/pzemSlave4Tag.txt");
 
-				debug_out(F("SetupGSheets: Calling Client->connect"), 									DEBUG_MED_INFO, 1);
+	PZEM_Meter[0].Divisor = readFile(SPIFFS, "/PZEM_Meter0Div.txt").toFloat();
+	PZEM_Meter[1].Divisor = readFile(SPIFFS, "/PZEM_Meter1Div.txt").toFloat();
+	PZEM_Meter[2].Divisor = readFile(SPIFFS, "/PZEM_Meter2Div.txt").toFloat();
+	PZEM_Meter[3].Divisor = readFile(SPIFFS, "/PZEM_Meter3Div.txt").toFloat();
 
-				int retval = client->connect(host, httpsPort);
-				if (retval == 1) {
-					 break;
-				}
-				else {
-					debug_out(F("SetupGSheets: Connection failed. Retrying..."), 						DEBUG_WARNING, 1);
-					debug_out("retval = " + String(retval), 											DEBUG_WARNING, 1);
-					debug_out(client->getResponseBody(), 												DEBUG_WARNING, 1);
-					delay(5000);
-					yield();
-					ArduinoOTA.handle();
-				}
-			}
-		}
+	cfg::SendPeriod  = readFile(SPIFFS, "/SendPeriod.txt").toInt() * 60; // Minutes to seconds
+
+
+	// Check read configuration consistent
+	cfg::OK = true;
+
+	cfg::OK &= pzemSlave1Addr;
+	cfg::OK &= pzemSlave2Addr;
+	cfg::OK &= pzemSlave3Addr;
+	cfg::OK &= pzemSlave4Addr;
+
+	cfg::OK &= pzemSlave1Tag.length();
+	cfg::OK &= pzemSlave2Tag.length();
+	cfg::OK &= pzemSlave3Tag.length();
+	cfg::OK &= pzemSlave4Tag.length();
+
+	cfg::OK &= PZEM_Meter[0].Divisor > 0.0;
+	cfg::OK &= PZEM_Meter[1].Divisor > 0.0;
+	cfg::OK &= PZEM_Meter[2].Divisor > 0.0;
+	cfg::OK &= PZEM_Meter[3].Divisor > 0.0;
+
+	cfg::OK &= cfg::SendPeriod > 120;
+
+	if(!cfg::OK){
+		debug_out(F("ReadConfig. SPIFFS configuration is not consistent."), 									DEBUG_ERROR, 1);
 	}
 	else{
-		debug_out(F("SetupGSheets: Error creating client object! Reboot."), 							DEBUG_ERROR, 1);
-		delay(1000);
-		Serial.flush();
-		ESP.reset();
-	}
-	if (!client->connected()){
-		debug_out(F("SetupGSheets: Connection failed. Reboot."), 										DEBUG_ERROR, 1);
-		delay(1000);
-		Serial.flush();
-		ESP.reset();
-	}
-	else
-	{
-		int DivTemp = 0;
-
-		pzemSlave1Addr = GetGSheetsRange("Addr01").toInt();
-		pzemSlave2Addr = GetGSheetsRange("Addr02").toInt();
-		pzemSlave3Addr = GetGSheetsRange("Addr03").toInt();
-		pzemSlave4Addr = GetGSheetsRange("Addr04").toInt();
-
-		DivTemp = GetGSheetsRange("Gain01").toInt();
-		if (DivTemp >= 1){
-			PZEM_Meter[0].Divisor = DivTemp;
-		}
-		else {
-			debug_out(F("Sensor #1 divisor is less than 1."),	 										DEBUG_ERROR, 1);
-		}
-
-		DivTemp = GetGSheetsRange("Gain02").toInt();
-		if (DivTemp >= 1){
-			PZEM_Meter[1].Divisor = DivTemp;
-		}
-		else {
-			debug_out(F("Sensor #2 divisor is less than 1."),	 										DEBUG_ERROR, 1);
-		}
-
-		DivTemp = GetGSheetsRange("Gain03").toInt();
-		if (DivTemp >= 1){
-			PZEM_Meter[2].Divisor = DivTemp;
-		}
-		else {
-			debug_out(F("Sensor #3 divisor is less than 1."),	 										DEBUG_ERROR, 1);
-		}
-
-		DivTemp = GetGSheetsRange("Gain04").toInt();
-		if (DivTemp >= 1){
-			PZEM_Meter[3].Divisor = DivTemp;
-		}
-		else {
-			debug_out(F("Sensor #4 divisor is less than 1."),	 										DEBUG_ERROR, 1);
-		}
-
-		cfg::SendPeriod	 = GetGSheetsRange("RPeriod").toInt() * 60;	// Minutes to seconds
+		debug_out(F("ReadConfig. Configuration read sucesfull."), 												DEBUG_MED_INFO, 1);
 	}
 
-
-	// delete HTTPSRedirect object
-	delete client;
-	client = nullptr;
-
-	debug_out(F("SetupGSheets: Client object deleted"), 												DEBUG_MED_INFO, 1);
-
-
-	if(!pzemSlave1Addr || !pzemSlave2Addr || !pzemSlave3Addr || !pzemSlave4Addr){
-		debug_out(F("SetupGSheets: No device addresses. Reboot."), 										DEBUG_ERROR, 1);
-		Serial.flush();
-		ESP.reset();
-	}
-
-	if((PZEM_Meter[0].Divisor<1.0) || (PZEM_Meter[1].Divisor<1.0) || (PZEM_Meter[2].Divisor<1.0) || (PZEM_Meter[3].Divisor<1.0)){
-		debug_out(F("SetupGSheets: Not all divisors defined. Reboot."), 								DEBUG_ERROR, 1);
-		Serial.flush();
-		ESP.reset();
-	}
 }
 
 

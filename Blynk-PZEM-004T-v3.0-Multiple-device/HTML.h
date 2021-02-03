@@ -148,20 +148,34 @@ const char index_html[] PROGMEM = R"rawliteral(
     <table>
        <tr>
         <td>TAG</td>
-        <td>POWER</td>
         <td>CURRENT</td>
+        <td>POWER</td>
+        <td>PF</td>
+		<td>ENERGY</td>
       </tr><tr>
-        <td>#TAG</td>
-        <td>#POWER</td>
-        <td>#CURRENT</td>
+        <td id="Tag1">#TAG</td>
+        <td id="Cur1">#TAG</td>
+        <td id="Pow1">#TAG</td>
+        <td id="PFc1">#TAG</td>
+        <td id="Eng1">#TAG</td>
+    </tr><tr>
+        <td id="Tag2">#TAG</td>
+        <td id="Cur2">#TAG</td>
+        <td id="Pow2">#TAG</td>
+        <td id="PFc2">#TAG</td>
+        <td id="Eng2">#TAG</td>
       </tr><tr>
-        <td>#TAG</td>
-        <td>#POWER</td>
-        <td>#CURRENT</td>
+        <td id="Tag3">#TAG</td>
+        <td id="Cur3">#TAG</td>
+        <td id="Pow3">#TAG</td>
+        <td id="PFc3">#TAG</td>
+        <td id="Eng3">#TAG</td>
       </tr><tr>
-        <td>#TAG</td>
-        <td>#POWER</td>
-        <td>#CURRENT</td>
+        <td id="Tag4">#TAG</td>
+        <td id="Cur4">#TAG</td>
+        <td id="Pow4">#TAG</td>
+        <td id="PFc4">#TAG</td>
+        <td id="Eng4">#TAG</td>
       </tr>
     </table>
   </div>
@@ -169,7 +183,57 @@ const char index_html[] PROGMEM = R"rawliteral(
   <div class="buttons">
     <button onclick="location.href='/config'" type="button">CONFIG</button>
   </div>
-  </body></html>
+  </body>
+
+	<script>
+	
+	//**************************************************************
+
+		fetchdata(1);
+		fetchdata(2);
+		fetchdata(3);
+		fetchdata(4);
+
+		setInterval(function(){
+			fetchdata(1);
+			fetchdata(2);
+			fetchdata(3);
+			fetchdata(4);
+		}, 10000) ;
+
+
+		function fetchdata (index) {
+	
+			var url = "/data";
+			var params = "sensor="+ index;// + "&control=2";
+			var http = new XMLHttpRequest();
+			
+			http.open("GET", url+"?"+params, true);
+			http.onreadystatechange = function()
+			{
+				if(http.readyState == 4 && http.status == 200) {
+					//alert(http.responseText);
+	
+					var res = http.responseText.split(";");
+	
+					document.getElementById("Tag"+index).innerHTML = res[0];
+					document.getElementById("Cur"+index).innerHTML = res[1];
+					document.getElementById("Pow"+index).innerHTML = res[2];
+					document.getElementById("PFc"+index).innerHTML = res[3];
+					document.getElementById("Eng"+index).innerHTML = res[4];
+	
+				}
+			}
+			http.send(null);
+		}
+
+
+
+	//****************************************************************
+
+	</script>
+
+</html>
 )rawliteral";
 
 #endif /* HTML_H_ */

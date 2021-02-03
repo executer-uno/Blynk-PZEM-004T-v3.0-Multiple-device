@@ -262,6 +262,31 @@ void setup() {
   });
 
 
+  server.on("/data", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    // Debug
+    Serial.println("Server. /data request");
+    Serial.println(request->url());
+
+    int paramsNr = request->params();
+    Serial.println(paramsNr);
+    for(int i=0;i<paramsNr;i++){
+
+         AsyncWebParameter* p = request->getParam(i);
+
+         Serial.print("Param name: ");
+         Serial.println(p->name());
+
+         Serial.print("Param value: ");
+         Serial.println(p->value());
+
+         Serial.println("------");
+    }
+    // debug
+
+    request->send_P(200, "text/plain", String("123;125;128;365;548").c_str());
+  });
+
+
   // Send a GET request to <ESP_IP>/update?output=<inputMessage1>&state=<inputMessage2>
   server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
     String inputMessage1;

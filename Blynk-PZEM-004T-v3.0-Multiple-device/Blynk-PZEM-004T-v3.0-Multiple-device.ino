@@ -150,31 +150,40 @@ String processor(const String& var){
     return pzemSlave1Tag;
   }
   else if(var == "DevAdr1"){
-    return pzemSlave1Addr;
+    return String(pzemSlave1Addr);
   }
   else if(var == "DevGain1"){
-    return PZEM_Meter[0].Divisor;
+    return String(PZEM_Meter[0].Divisor);
   }
   else if(var == "DevTag2"){
-    return pzemSlave2Tag;
+    return String(pzemSlave2Tag);
   }
   else if(var == "DevAdr2"){
-    return pzemSlave2Addr;
+    return String(pzemSlave2Addr);
   }
   else if(var == "DevGain2"){
-    return PZEM_Meter[1].Divisor;
+    return String(PZEM_Meter[1].Divisor);
   }
   else if(var == "DevTag3"){
-	return pzemSlave3Tag;
+	return String(pzemSlave3Tag);
   }
   else if(var == "DevAdr3"){
-	return pzemSlave3Addr;
+	return String(pzemSlave3Addr);
   }
   else if(var == "DevGain3"){
-	return PZEM_Meter[2].Divisor;
+	return String(PZEM_Meter[2].Divisor);
+  }
+  else if(var == "DevTag4"){
+	return String(pzemSlave4Tag);
+  }
+  else if(var == "DevAdr4"){
+	return String(pzemSlave4Addr);
+  }
+  else if(var == "DevGain4"){
+	return String(PZEM_Meter[3].Divisor);
   }
   else if(var == "MaxSendPeriod"){
-	return (cfg::SendPeriod / 60.0);
+	return String((cfg::SendPeriod / 60.0));
   }
 
   return String();
@@ -244,12 +253,13 @@ void setup() {
 
   // Send configuration web page config.html to client
   server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", index_html, processor);
+    request->send_P(200, "text/html", config_html, processor);
   });
-  server.on("/reboot", handleReboot);
   server.onNotFound(handleNotFound);
-
-
+  server.on("/reboot", HTTP_POST, handleReboot);
+  server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send(200, "text/plain", String(ESP.getFreeHeap()));
+  });
 
 
   // Send a GET request to <ESP_IP>/update?output=<inputMessage1>&state=<inputMessage2>
@@ -257,50 +267,103 @@ void setup() {
     String inputMessage1;
     String inputMessage2;
     // GET input1 value on <ESP_IP>/update?output=<inputMessage1>&state=<inputMessage2>
-    if (request->hasParam("Name") && request->hasParam("Value")) {
-      inputMessage1 = request->getParam("Name")->value();
-      inputMessage2 = request->getParam("Value")->value();
-      digitalWrite(inputMessage1.toInt(), inputMessage2.toInt());
+
+
+    // Debug
+    Serial.println("Server. /update request");
+    Serial.println(request->url());
+
+    int paramsNr = request->params();
+    Serial.println(paramsNr);
+    for(int i=0;i<paramsNr;i++){
+
+         AsyncWebParameter* p = request->getParam(i);
+
+         Serial.print("Param name: ");
+         Serial.println(p->name());
+
+         Serial.print("Param value: ");
+         Serial.println(p->value());
+
+         Serial.println("------");
     }
-    else {
-      inputMessage1 = "No message sent";
-      inputMessage2 = "No message sent";
+    // debug
+
+    if(request->params() == 1){
+    	// Device Tag fields (8 characters, uppercase)
+		if (request->hasParam("DevTag1")){
+			pzemSlave1Tag = request->getParam(0)->value();
+			pzemSlave1Tag.remove(8);
+			pzemSlave1Tag.toUpperCase();
+			writeFile(SPIFFS, "/pzemSlave1Tag.txt", pzemSlave1Tag.c_str());
+		}
+		if (request->hasParam("DevTag2")){
+			pzemSlave2Tag = request->getParam(0)->value();
+			pzemSlave2Tag.remove(8);
+			pzemSlave2Tag.toUpperCase();
+			writeFile(SPIFFS, "/pzemSlave2Tag.txt", pzemSlave2Tag.c_str());
+		}
+		if (request->hasParam("DevTag3")){
+			pzemSlave3Tag = request->getParam(0)->value();
+			pzemSlave3Tag.remove(8);
+			pzemSlave3Tag.toUpperCase();
+			writeFile(SPIFFS, "/pzemSlave3Tag.txt", pzemSlave3Tag.c_str());
+		}
+		if (request->hasParam("DevTag4")){
+			pzemSlave4Tag = request->getParam(0)->value();
+			pzemSlave4Tag.remove(8);
+			pzemSlave4Tag.toUpperCase();
+			writeFile(SPIFFS, "/pzemSlave4Tag.txt", pzemSlave4Tag.c_str());
+		}
+
+		// Modbus address fields
+		if (request->hasParam("DevAdr1")){
+			pzemSlave1Addr =  request->getParam(0)->value().toInt();
+			writeFile(SPIFFS, "/pzemSlave1Addr.txt", request->getParam(0)->value().c_str());
+		}
+		if (request->hasParam("DevAdr2")){
+			pzemSlave2Addr =  request->getParam(0)->value().toInt();
+			writeFile(SPIFFS, "/pzemSlave2Addr.txt", request->getParam(0)->value().c_str());
+		}
+		if (request->hasParam("DevAdr3")){
+			pzemSlave3Addr =  request->getParam(0)->value().toInt();
+			writeFile(SPIFFS, "/pzemSlave3Addr.txt", request->getParam(0)->value().c_str());
+		}
+		if (request->hasParam("DevAdr4")){
+			pzemSlave4Addr =  request->getParam(0)->value().toInt();
+			writeFile(SPIFFS, "/pzemSlave4Addr.txt", request->getParam(0)->value().c_str());
+		}
+
+		// Measurement gain fields
+		if (request->hasParam("DevGain1")){
+			PZEM_Meter[0].Divisor = (float)request->getParam(0)->value().toInt();
+			writeFile(SPIFFS, "/PZEM_Meter1Div.txt", String(PZEM_Meter[0].Divisor).c_str());
+		}
+		if (request->hasParam("DevGain2")){
+			PZEM_Meter[1].Divisor = (float)request->getParam(0)->value().toInt();
+			writeFile(SPIFFS, "/PZEM_Meter2Div.txt", String(PZEM_Meter[1].Divisor).c_str());
+		}
+		if (request->hasParam("DevGain3")){
+			PZEM_Meter[2].Divisor = (float)request->getParam(0)->value().toInt();
+			writeFile(SPIFFS, "/PZEM_Meter3Div.txt", String(PZEM_Meter[2].Divisor).c_str());
+		}
+		if (request->hasParam("DevGain4")){
+			PZEM_Meter[3].Divisor = (float)request->getParam(0)->value().toInt();
+			writeFile(SPIFFS, "/PZEM_Meter4Div.txt", String(PZEM_Meter[3].Divisor).c_str());
+		}
+
+		// Send period maximum
+		if (request->hasParam("MaxSendPeriod")){
+			cfg::SendPeriod = 60 * request->getParam(0)->value().toInt();
+			writeFile(SPIFFS, "/SendPeriod.txt", request->getParam(0)->value().c_str());
+		}
     }
-    Serial.print("GPIO: ");
-    Serial.print(inputMessage1);
-    Serial.print(" - Set to: ");
-    Serial.println(inputMessage2);
+
     request->send(200, "text/plain", "OK");
   });
 
 
 
-
-
-  // Send a GET request to <ESP_IP>/get?inputString=<inputMessage>
-  server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    String inputMessage;
-    // GET inputString value on <ESP_IP>/get?inputString=<inputMessage>
-    if (request->hasParam(PARAM_STRING)) {
-      inputMessage = request->getParam(PARAM_STRING)->value();
-      writeFile(SPIFFS, "/inputString.txt", inputMessage.c_str());
-    }
-    // GET inputInt value on <ESP_IP>/get?inputInt=<inputMessage>
-    else if (request->hasParam(PARAM_INT)) {
-      inputMessage = request->getParam(PARAM_INT)->value();
-      writeFile(SPIFFS, "/inputInt.txt", inputMessage.c_str());
-    }
-    // GET inputFloat value on <ESP_IP>/get?inputFloat=<inputMessage>
-    else if (request->hasParam(PARAM_FLOAT)) {
-      inputMessage = request->getParam(PARAM_FLOAT)->value();
-      writeFile(SPIFFS, "/inputFloat.txt", inputMessage.c_str());
-    }
-    else {
-      inputMessage = "No message sent";
-    }
-    Serial.println(inputMessage);
-    request->send(200, "text/text", inputMessage);
-  });
   server.onNotFound(notFound);
   server.begin();
 
@@ -553,10 +616,10 @@ void ReadConfig(){
 	pzemSlave3Tag  = readFile(SPIFFS, "/pzemSlave3Tag.txt");
 	pzemSlave4Tag  = readFile(SPIFFS, "/pzemSlave4Tag.txt");
 
-	PZEM_Meter[0].Divisor = readFile(SPIFFS, "/PZEM_Meter0Div.txt").toFloat();
-	PZEM_Meter[1].Divisor = readFile(SPIFFS, "/PZEM_Meter1Div.txt").toFloat();
-	PZEM_Meter[2].Divisor = readFile(SPIFFS, "/PZEM_Meter2Div.txt").toFloat();
-	PZEM_Meter[3].Divisor = readFile(SPIFFS, "/PZEM_Meter3Div.txt").toFloat();
+	PZEM_Meter[0].Divisor = readFile(SPIFFS, "/PZEM_Meter1Div.txt").toFloat();
+	PZEM_Meter[1].Divisor = readFile(SPIFFS, "/PZEM_Meter2Div.txt").toFloat();
+	PZEM_Meter[2].Divisor = readFile(SPIFFS, "/PZEM_Meter3Div.txt").toFloat();
+	PZEM_Meter[3].Divisor = readFile(SPIFFS, "/PZEM_Meter4Div.txt").toFloat();
 
 	cfg::SendPeriod  = readFile(SPIFFS, "/SendPeriod.txt").toInt() * 60; // Minutes to seconds
 
@@ -564,15 +627,15 @@ void ReadConfig(){
 	// Check read configuration consistent
 	cfg::OK = true;
 
-	cfg::OK &= pzemSlave1Addr;
-	cfg::OK &= pzemSlave2Addr;
-	cfg::OK &= pzemSlave3Addr;
-	cfg::OK &= pzemSlave4Addr;
+	cfg::OK &= !!pzemSlave1Addr;
+	cfg::OK &= !!pzemSlave2Addr;
+	cfg::OK &= !!pzemSlave3Addr;
+	cfg::OK &= !!pzemSlave4Addr;
 
-	cfg::OK &= pzemSlave1Tag.length();
-	cfg::OK &= pzemSlave2Tag.length();
-	cfg::OK &= pzemSlave3Tag.length();
-	cfg::OK &= pzemSlave4Tag.length();
+	cfg::OK &= !!pzemSlave1Tag.length();
+	cfg::OK &= !!pzemSlave2Tag.length();
+	cfg::OK &= !!pzemSlave3Tag.length();
+	cfg::OK &= !!pzemSlave4Tag.length();
 
 	cfg::OK &= PZEM_Meter[0].Divisor > 0.0;
 	cfg::OK &= PZEM_Meter[1].Divisor > 0.0;
@@ -691,7 +754,8 @@ String GetGSheetsRange(String Range){
 /** Handle the reboot request from web server */
 void handleReboot(AsyncWebServerRequest *request) {
   Serial.println("ESP Reboot from web server");
-  server.end(); // Stop is needed because we sent no content length
+  request->send(200,"text/plain","ok");
+  delay(2000);
   ESP.restart();
 }
 

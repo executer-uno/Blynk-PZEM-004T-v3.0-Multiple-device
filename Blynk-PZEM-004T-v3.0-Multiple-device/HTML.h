@@ -17,8 +17,9 @@ const char config_html[] PROGMEM = R"rawliteral(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script>
     function submitMessage() {
-      alert("Saved value to ESP SPIFFS");
-      setTimeout(function(){ document.location.reload(false); }, 500); 
+		//if(confirm("Update config?")){
+			setTimeout(function(){ document.location.reload(false); }, 500);
+		//}
     }
   </script></head><body>
 
@@ -122,7 +123,14 @@ const char config_html[] PROGMEM = R"rawliteral(
 	  <input type="submit" value=">" onclick="submitMessage()">
 	</form>
 
-
+  <div class="buttons">
+    <button onclick="location.href='/'" type="button">HOME</button>
+  </div>
+  <div class="buttons">
+	<form action="/reboot" method="post">
+		<button name="REBOOT" value="REBOOT">REBOOT</button>
+	</form>
+  </div>
 
 
   <iframe style="display:none" name="hidden-form"></iframe>

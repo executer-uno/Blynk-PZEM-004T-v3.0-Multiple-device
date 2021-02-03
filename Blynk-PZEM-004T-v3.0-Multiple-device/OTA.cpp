@@ -23,6 +23,7 @@ void setupOTA(const char* nameprefix) {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+	Serial.println("");
     Serial.println("Connection Failed! Rebooting...");
     delay(5000);
     ESP.restart();

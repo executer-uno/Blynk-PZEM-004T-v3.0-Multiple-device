@@ -104,7 +104,7 @@ unsigned long	LastRead;
 bool			TickFlag;		// Flag to tick from interrupt to main loop
 unsigned long	MissedTicks;	// Missed ticks counter
 
-
+bool			RestartFlag = false;	// Flag to rise from ISR and to be processed in loop
 
 
 
@@ -514,6 +514,11 @@ void loop() {
 		  delay(5000);
 		  ESP.reset();
 	  }
+	  if(RestartFlag){
+		  debug_out(String("Restart by RestartFlag from WebServer"),		 										DEBUG_ALWAYS, 1);
+		  delay(5000);
+		  ESP.reset();
+	  }
 
 	  yield();
 }
@@ -604,7 +609,6 @@ void Send2GSheets(Meter *PZMeter){
 void ReadConfig(){
 
 	debug_out(F("ReadConfig. Read device configuration from SPIFFS"), 												DEBUG_MED_INFO, 1);
-
 
 	pzemSlave1Addr = readFile(SPIFFS, "/pzemSlave1Addr.txt").toInt();
 	pzemSlave2Addr = readFile(SPIFFS, "/pzemSlave2Addr.txt").toInt();
@@ -697,6 +701,7 @@ bool CheckGSheets(){
 		ESP.reset();
 	}
 	if (!client->connected()){
+		debug_out(F(""), 																				DEBUG_ERROR, 1);
 		debug_out(F("SetupGSheets: Connection failed. Reboot."), 										DEBUG_ERROR, 1);
 		Serial.flush();
 		delay(1000);
@@ -754,9 +759,8 @@ String GetGSheetsRange(String Range){
 /** Handle the reboot request from web server */
 void handleReboot(AsyncWebServerRequest *request) {
   Serial.println("ESP Reboot from web server");
-  request->send(200,"text/plain","ok");
-  delay(2000);
-  ESP.restart();
+  request->redirect("/");
+  RestartFlag = true;
 }
 
 

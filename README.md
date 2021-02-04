@@ -1,9 +1,13 @@
-# Blynk-PZEM-004T-v3.0-Multiple-device
+# PZEM-004T-v3.0-x4-ESP8266
 Blynk ESP8266 (NodeMCU) Program to connect multiple PZEM 004T v3.0 Power Meter. 
+
+Schematics and some photos:
+https://easyeda.com/executer/pzem004t_esp8266_gsheets
+
+TODO: Rewrite readme
 <h2> Requirements </h2>
 1) <a href="http://s.click.aliexpress.com/e/ElytDjIu" rel="nofollow">PZEM-004T v3.0 </a><br>
 2) <a href="http://s.click.aliexpress.com/e/nlefJ4PI" rel="nofollow">NodeMCU </a><br>
-3) <a href="https://play.google.com/store/apps/details?id=cc.blynk" rel="nofollow">Blynk App </a><br>
 <h2> Installation </h2>
 Open settings.h and change Bynk Auth code, Wifi settings, server settings and few other parameters as per your project requirement.
 

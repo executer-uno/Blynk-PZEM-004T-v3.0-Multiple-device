@@ -263,7 +263,10 @@ void setup() {
 
 
   server.on("/data", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    // Debug
+
+	String Answer = "";
+
+    // Debug parameters
     Serial.println("Server. /data request");
     Serial.println(request->url());
 
@@ -282,6 +285,16 @@ void setup() {
          Serial.println("------");
     }
     // debug
+
+	if (request->hasParam("sensor")){
+		String params = request->getParam("sensor")->value();
+		for(int i = 0; i< countSplitCharacters(params, ';') + 1; i++){
+			String param = getValue(params, ';', i);
+
+
+
+		}
+    }
 
     request->send_P(200, "text/plain", String("123;125;128;365;548").c_str());
   });
@@ -811,4 +824,35 @@ void handleNotFound(AsyncWebServerRequest *request) {
 
   request->send(response);
 
+}
+
+// Thanks to https://stackoverflow.com/questions/9072320/split-string-into-string-array
+String getValue(String data, char separator, int index)
+{
+ int found = 0;
+ int strIndex[] = {0, -1};
+ int maxIndex = data.length()-1;
+
+ for(int i=0; i<=maxIndex && found<=index; i++){
+   if(data.charAt(i)==separator || i==maxIndex){
+       found++;
+       strIndex[0] = strIndex[1]+1;
+       strIndex[1] = (i == maxIndex) ? i+1 : i;
+   }
+ }
+
+ return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+int countSplitCharacters(String text, char splitChar) {
+    int returnValue = 0;
+    int index = -1;
+
+    while (index > -1) {
+        index = text.indexOf(splitChar, index + 1);
+
+        if(index > -1) returnValue+=1;
+    }
+
+    return returnValue;
 }

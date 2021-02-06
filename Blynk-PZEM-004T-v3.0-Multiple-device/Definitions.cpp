@@ -34,6 +34,8 @@ void measurement::NewMeas(float Measure, float treshold){
 	bool  new_cycle[3] 	= {false};
 	bool  cycle 		= false;
 
+	this->InstantValue			 = Measure;
+
 	t_max = max(this->Meas_02_Accum.max, Measure);
 	t_min = min(this->Meas_02_Accum.min, Measure);
 	t_max = max(this->Meas_01_Check.max, t_max);		// Meas_01_Check can contain several measurements,
@@ -119,6 +121,8 @@ void measurement::Accum_to_Store(){
 }
 void measurement::AddMeas(float Measure){
 
+	this->InstantValue			 = Measure;
+
 	this->Meas_02_Accum.count++;
 	this->Meas_02_Accum.sum 	+= Measure;
 	this->Meas_02_Accum.max 	 = this->Meas_02_Accum.sum;
@@ -151,6 +155,8 @@ void measurement::ClearStore(){
 measurement::measurement(){
 	this->Clear();
 	this->ClearStore();
+
+	this->InstantValue = NAN;
 }
 bool measurement::setCycles(unsigned int Tmin_sec, unsigned int Tmax_sec){
 	// Store internal parameters
@@ -194,6 +200,9 @@ String measurement::GetJson(){
 uint32_t measurement::GetCount_2_Store(){
 
 	return this->Meas_03_Store.count;
+}
+float measurement::GetInstantValue(){
+	return this->InstantValue;
 }
 
 /*
@@ -375,7 +384,19 @@ void Meter::GetData(){
 double Meter::GetLastEnergy(){
 	return this->PREV_active_energy/1000.0;				// W*h to kW*h units conversion
 }
+String Meter::GetInstant(){								// Get instant measurements in string format VOLTAGE;CURRENT;POWER;ENERGY;FREQ;PF
+	String data = "";
 
+
+	data += Float2String(this->VOLTAGE.GetInstantValue(), 		0) + ";";
+	data += Float2String(this->CURRENT_USAGE.GetInstantValue(),	1) + ";";
+	data += Float2String(this->ACTIVE_POWER.GetInstantValue(), 	0) + ";";
+	data += Float2String(this->ACTIVE_ENERGY.GetInstantValue(), 0) + ";";
+	data += Float2String(this->FREQUENCY.GetInstantValue(), 	0) + ";";
+	data += Float2String(this->POWER_FACTOR.GetInstantValue(), 	2);
+
+	return data;
+}
 /*****************************************************************
  * convert float to string with a      							 *
  * precision of two (or a given number of) decimal places		 *

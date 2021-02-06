@@ -60,6 +60,7 @@
 
 		bool			Need_to_Store;	// New value need to be stored in new accumulation cycle
 
+		float			InstantValue;	// Last measured instant value for fast monitoring
 	public:
 
 		void NewMeas(float Measure, float treshold); 	// Store new measurement to accumulator
@@ -82,6 +83,8 @@
 		uint32_t GetCount_2_Store();
 		bool Check_2_Store(); 							// Check if measurement is ready to storage
 		bool setCycles(unsigned int Tmin_sec, unsigned int Tmax_sec); //set parameters of maximum and minimum measurement cycle in seconds
+
+		float GetInstantValue();
 	};
 
 
@@ -113,6 +116,7 @@
 		void   CRCError();				// Increase CRC error counter
 		String DebugCRC();				// Returns CRC errors rate and measurements count
 		String GetJson();
+		String GetInstant();			// Get instant measurements in string format VOLTAGE;CURRENT;POWER;ENERGY;FREQ;PF
 		void   begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial, unsigned int Tmin_sec, unsigned int Tmax_sec);
 		Meter();
 		bool   Check_2_Store();			// Check if any data to be stored

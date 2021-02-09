@@ -109,9 +109,6 @@ bool			RestartFlag = false;	// Flag to rise from ISR and to be processed in loop
 
 
 
-void notFound(AsyncWebServerRequest *request) {
-  request->send(404, "text/plain", "Not found");
-}
 
 String readFile(fs::FS &fs, const char * path){
   Serial.printf("Reading file: %s\r\n", path);
@@ -255,8 +252,19 @@ void setup() {
   server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", config_html, processor);
   });
+
   server.onNotFound(handleNotFound);
-  server.on("/reboot", HTTP_POST, handleReboot);
+
+  server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request){
+
+	  Serial.println("ESP Reboot from web server");
+	  RestartFlag = true;
+
+	  request->redirect("/");
+	  request->send(200, "text/plain", "OK");
+  });
+
+
   server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send(200, "text/plain", String(ESP.getFreeHeap()));
   });
@@ -402,7 +410,6 @@ void setup() {
 
 
 
-  server.onNotFound(notFound);
   server.begin();
 
   Serial.println(" Done.");
@@ -791,14 +798,6 @@ String GetGSheetsRange(String Range){
 		debug_out(F("GetGSheetsRange: GET data fails. "), DEBUG_MIN_INFO, 1);
 	}
 	return "";
-}
-
-
-/** Handle the reboot request from web server */
-void handleReboot(AsyncWebServerRequest *request) {
-  Serial.println("ESP Reboot from web server");
-  request->redirect("/");
-  RestartFlag = true;
 }
 
 

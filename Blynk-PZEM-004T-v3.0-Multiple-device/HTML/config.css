@@ -25,10 +25,24 @@ h1 {
   line-height: 24px;
 }
 
+input[type="text"] {
+  margin-left: 10px;
+  border: 0px solid;
+  background: transparent;
+
+  font-size: 20px;
+  line-height: 24px;
+
+  width: 100%;
+}
+
 table {
   border-spacing: 0;
   width: 100%;
   text-align: center;
+
+  font-size: 16px;
+  line-height: 20px;
 }
 th,
 td {
@@ -36,16 +50,13 @@ td {
   border-right: 1px solid #909090;
   border-bottom: 1px solid #909090;
 }
-td {
-  font-size: 20px;
-  line-height: 24px;
-}
 
 button {
+  margin-left: 15px;
   padding: 10px;
   background: #f2f2f2;
   color: #141313;
-
+  /* background-image: url(); */
   min-width: 200px;
 }
 
@@ -68,9 +79,6 @@ button {
 
 th {
   font-weight: bold;
-}
-th:first-child {
-  text-align: right;
 }
 
 tr:nth-child(even) {
@@ -99,4 +107,8 @@ td.right-span {
   font: 20px fontawesome;
   color: #141313;
   padding-right: 10px;
+}
+
+.attention {
+  background: #eb5757;
 }

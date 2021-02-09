@@ -1,0 +1,124 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Электрика. Настройки</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="config.css">
+    
+</head>
+
+<body>
+    <div class="title">
+        <h1>НАСТРОЙКИ</h1>
+    </div>
+    <div class="measurements">
+
+        <table class="zebra">
+            <tr>
+                <th>DEVICE TAG</th>
+                <th>MODBUS ADRESS</th>
+                <th>MEASURE GAIN</th>
+            </tr>
+            <tr>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevTag1" value="%DevTag1%">
+                    </form>
+                </td>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevAdr1" value="%DevAdr1%">
+                    </form>
+                </td>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevGain1" value="%DevGain1%">
+                    </form>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevTag2" value="%DevTag2%">
+                    </form>
+                </td>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevAdr2" value="%DevAdr2%">
+                    </form>
+                </td>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevGain2" value="%DevGain2%">
+                    </form>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevTag3" value="%DevTag3%">
+                    </form>
+                </td>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevAdr3" value="%DevAdr3%">
+                    </form>
+                </td>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevGain3" value="%DevGain3%">
+                    </form>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevTag4" value="%DevTag4%">
+                    </form>
+                </td>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevAdr4" value="%DevAdr4%">
+                    </form>
+                </td>
+                <td>
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="DevGain4" value="%DevGain4%">
+                    </form>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    MAX PERIOD
+                </td>
+                <td class="right-span">
+                    <form action="/update" target="hidden-form">
+                        <input type="text" name="MaxSendPeriod" value="%MaxSendPeriod%">
+                    </form>
+                </td>
+                <td>
+                </td>
+            </tr>
+        </table>
+
+
+
+    </div>
+    
+    
+    <div class="buttons">
+
+        <button onclick="location.href='/reboot'" type="button" class="attention"><span class="icon">&#xf021</span>РЕСТАРТ</button>
+        <button onclick="location.href='/'" type="button"><span class="icon">&#xf015</span>ДОМОЙ</button>
+
+    </div>
+
+    <!-- <iframe style="display:none" name="hidden-form"></iframe> -->
+</body>
+
+</html>

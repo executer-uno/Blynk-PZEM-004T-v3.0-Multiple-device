@@ -1,5 +1,8 @@
 @import url("https://netdna.bootstrapcdn.com/font-awesome/4.0.1/css/font-awesome.css");
 
+/* all tricks are there
+https://webdesign.tutsplus.com/tutorials/create-a-stylish-dark-contact-form-with-html-css-and-javascript--cms-33201 */
+
 * {
   margin: 0;
   padding: 0;
@@ -7,22 +10,35 @@
   font-family: "Montserrat", sans-serif;
   font-style: normal;
   font-weight: normal;
-
+  font-size: 5vmin;
+  line-height: 7vmin;
   color: #bbb;
 }
 
 body {
   height: 100%;
   width: 100%;
-  min-height: 100%;
-  font-size: 16px;
-  line-height: 20px;
+
   background: #111;
 }
 
 h1 {
-  font-size: 20px;
-  line-height: 24px;
+  font-size: 6vmin;
+  line-height: 8vmin;
+}
+
+input {
+  border: 0px solid;
+  background: transparent;
+  width: 100%;
+
+  transition: background-color 0.3s cubic-bezier(0.57, 0.21, 0.69, 1.25),
+    transform 0.3s cubic-bezier(0.57, 0.21, 0.69, 1.25);
+}
+
+button:hover,
+input:focus {
+  transform: scale(1.05);
 }
 
 table {
@@ -32,45 +48,45 @@ table {
 }
 th,
 td {
-  padding: 10px 20px;
+  padding: 1vmin 2vmin;
   border-right: 1px solid #909090;
   border-bottom: 1px solid #909090;
 }
-td {
-  font-size: 20px;
-  line-height: 24px;
-}
 
 button {
-  padding: 10px;
+  margin-left: 2vmin;
+  padding: 1vmin;
   background: #f2f2f2;
   color: #141313;
-
-  min-width: 200px;
+  /* background-image: url(); */
+  min-width: 15vmin;
 }
 
 .title {
-  height: 85px;
-  padding: 15px 15px 0 15px;
+  height: 8vh;
+  min-height: 10vmin;
+  padding: 3vmin 3vmin 0 3vmin;
   text-align: right;
 }
 
 .measurements {
-  padding: 0 15px;
+  padding: 0 3vmin;
 }
 
 .buttons {
-  padding: 15px;
+  padding: 0;
   position: absolute;
-  bottom: 0px;
-  right: 0px;
+  bottom: 3vmin;
+  right: 3vmin;
 }
 
+.unit {
+  font-size: 2.5vmin;
+  line-height: 2vmin;
+  margin: 0 1vmin;
+}
 th {
   font-weight: bold;
-}
-th:first-child {
-  text-align: right;
 }
 
 tr:nth-child(even) {
@@ -96,7 +112,11 @@ td.right-span {
 }
 
 .icon {
-  font: 20px fontawesome;
+  font: 5vmin fontawesome;
   color: #141313;
-  padding-right: 10px;
+  padding: 0 2vmin;
+}
+
+.attention {
+  background: #eb5757;
 }

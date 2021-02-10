@@ -25,6 +25,9 @@ const char config_html[] PROGMEM = R"rawliteral(
 	<style>
 		@import url("https://netdna.bootstrapcdn.com/font-awesome/4.0.1/css/font-awesome.css");
 		
+		/* all tricks are there
+		https://webdesign.tutsplus.com/tutorials/create-a-stylish-dark-contact-form-with-html-css-and-javascript--cms-33201 */
+		
 		* {
 		  margin: 0;
 		  padding: 0;
@@ -32,70 +35,74 @@ const char config_html[] PROGMEM = R"rawliteral(
 		  font-family: "Montserrat", sans-serif;
 		  font-style: normal;
 		  font-weight: normal;
-		
+		  font-size: 5vmin;
+		  line-height: 7vmin;
 		  color: #bbb;
 		}
 		
 		body {
 		  height: 100%%;
 		  width: 100%%;
-		  min-height: 100%%;
-		  font-size: 12px;
-		  line-height: 16px;
+		
 		  background: #111;
 		}
 		
 		h1 {
-		  font-size: 20px;
-		  line-height: 24px;
+		  font-size: 6vmin;
+		  line-height: 8vmin;
 		}
 		
-		input[type="text"] {
-		  margin-left: 10px;
+		input {
 		  border: 0px solid;
 		  background: transparent;
-			
 		  width: 100%%;
+		
+		  transition: background-color 0.3s cubic-bezier(0.57, 0.21, 0.69, 1.25),
+			transform 0.3s cubic-bezier(0.57, 0.21, 0.69, 1.25);
+		}
+		
+		button:hover,
+		input:focus {
+		  transform: scale(1.05);
 		}
 		
 		table {
 		  border-spacing: 0;
 		  width: 100%%;
 		  text-align: center;
-		
-		  font-size: 12px;
-		  line-height: 16px;
 		}
 		th,
 		td {
-		  padding: 10px 20px;
+		  padding: 1vmin 2vmin;
 		  border-right: 1px solid #909090;
 		  border-bottom: 1px solid #909090;
 		}
 		
 		button {
-		  margin-left: 15px;
-		  padding: 10px;
+		  margin-left: 2vmin;
+		  padding: 1vmin;
 		  background: #f2f2f2;
 		  color: #141313;
-		  min-width: 100px;
+		  /* background-image: url(); */
+		  min-width: 15vmin;
 		}
 		
 		.title {
-		  height: 85px;
-		  padding: 15px 15px 0 15px;
+		  height: 8vh;
+		  min-height: 10vmin;
+		  padding: 3vmin 3vmin 0 3vmin;
 		  text-align: right;
 		}
 		
 		.measurements {
-		  padding: 0 15px;
+		  padding: 0 3vmin;
 		}
 		
 		.buttons {
-		  padding: 15px;
+		  padding: 0;
 		  position: absolute;
-		  bottom: 0px;
-		  right: 0px;
+		  bottom: 3vmin;
+		  right: 3vmin;
 		}
 		
 		th {
@@ -125,15 +132,14 @@ const char config_html[] PROGMEM = R"rawliteral(
 		}
 		
 		.icon {
-		  font: 20px fontawesome;
+		  font: 5vmin fontawesome;
 		  color: #141313;
-		  padding-right: 10px;
+		  padding: 0 2vmin;
 		}
 		
 		.attention {
 		  background: #eb5757;
 		}
-
 	</style>	
 </head>
 
@@ -264,6 +270,9 @@ const char index_html[] PROGMEM = R"rawliteral(
 	<STYLE>
 		@import url("https://netdna.bootstrapcdn.com/font-awesome/4.0.1/css/font-awesome.css");
 		
+		/* all tricks are there
+		https://webdesign.tutsplus.com/tutorials/create-a-stylish-dark-contact-form-with-html-css-and-javascript--cms-33201 */
+		
 		* {
 		  margin: 0;
 		  padding: 0;
@@ -271,22 +280,35 @@ const char index_html[] PROGMEM = R"rawliteral(
 		  font-family: "Montserrat", sans-serif;
 		  font-style: normal;
 		  font-weight: normal;
-		
+		  font-size: 5vmin;
+		  line-height: 7vmin;
 		  color: #bbb;
 		}
 		
 		body {
 		  height: 100%%;
 		  width: 100%%;
-		  min-height: 100%%;
-		  font-size: 12px;
-		  line-height: 16px;
+		
 		  background: #111;
 		}
 		
 		h1 {
-		  font-size: 20px;
-		  line-height: 24px;
+		  font-size: 6vmin;
+		  line-height: 8vmin;
+		}
+		
+		input {
+		  border: 0px solid;
+		  background: transparent;
+		  width: 100%%;
+		
+		  transition: background-color 0.3s cubic-bezier(0.57, 0.21, 0.69, 1.25),
+			transform 0.3s cubic-bezier(0.57, 0.21, 0.69, 1.25);
+		}
+		
+		button:hover,
+		input:focus {
+		  transform: scale(1.05);
 		}
 		
 		table {
@@ -296,41 +318,45 @@ const char index_html[] PROGMEM = R"rawliteral(
 		}
 		th,
 		td {
-		  padding: 10px 20px;
+		  padding: 1vmin 2vmin;
 		  border-right: 1px solid #909090;
 		  border-bottom: 1px solid #909090;
 		}
 		
 		button {
-		  padding: 10px;
+		  margin-left: 2vmin;
+		  padding: 1vmin;
 		  background: #f2f2f2;
 		  color: #141313;
-		
-		  min-width: 100px;
+		  /* background-image: url(); */
+		  min-width: 15vmin;
 		}
 		
 		.title {
-		  height: 85px;
-		  padding: 15px 15px 0 15px;
+		  height: 8vh;
+		  min-height: 10vmin;
+		  padding: 3vmin 3vmin 0 3vmin;
 		  text-align: right;
 		}
 		
 		.measurements {
-		  padding: 0 15px;
+		  padding: 0 3vmin;
 		}
 		
 		.buttons {
-		  padding: 15px;
+		  padding: 0;
 		  position: absolute;
-		  bottom: 0px;
-		  right: 0px;
+		  bottom: 3vmin;
+		  right: 3vmin;
 		}
 		
+		.unit {
+		  font-size: 2.5vmin;
+		  line-height: 2vmin;
+		  margin: 0 1vmin;
+		}
 		th {
 		  font-weight: bold;
-		}
-		th:first-child {
-		  text-align: right;
 		}
 		
 		tr:nth-child(even) {
@@ -356,9 +382,13 @@ const char index_html[] PROGMEM = R"rawliteral(
 		}
 		
 		.icon {
-		  font: 20px fontawesome;
+		  font: 5vmin fontawesome;
 		  color: #141313;
-		  padding-right: 10px;
+		  padding: 0 2vmin;
+		}
+		
+		.attention {
+		  background: #eb5757;
 		}
 
 	</STYLE>
@@ -370,12 +400,12 @@ const char index_html[] PROGMEM = R"rawliteral(
     </div>
     <div class="measurements">
         <table class="zebra">
-            <tr>
+        	<tr>
                 <th></th>
-                <th>CURRENT</th>
-                <th>POWER</th>
+                <th>I<span class="unit">A</span></th>
+                <th>P<span class="unit">kW</span></th>
                 <th>PF</th>
-                <th>ENERGY</th>
+                <th>E<span class="unit">Wh</span></th>
             </tr>
             <tr class="data-row">
                 <th id="Tag1">BATH</th>
@@ -409,12 +439,12 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <td class="spacer" colspan="5"><br></td>
             </tr>
             <tr class="data-row">
-                <th id="Tag4">VOLTAGE</th>
+                <th id="Tag4">V<span class="unit">V</span></th>
                 <td id="Cur4" class="right-span">#TAG</td>
                 <td colspan="3"></td>
             </tr>
             <tr class="data-row">
-                <th id="Tag4">FREQ</th>
+                <th id="Tag4">f<span class="unit">Hz</span></th>
                 <td id="Cur4" class="right-span">#TAG</td>
                 <td colspan="3"></td>
             </tr>

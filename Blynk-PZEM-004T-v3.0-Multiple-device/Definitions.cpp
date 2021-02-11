@@ -215,6 +215,7 @@ Meter::Meter(){
 	this->Divisor = 1.0;
 	this->PREV_active_energy = -1.0;
 	this->NeedZeroing = false;
+	this->ForceToStore = false;
 }
 void Meter::begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial, unsigned int Tmin_sec, unsigned int Tmax_sec){
 	this->MBNode.begin(pzemSlaveAddr, *pzemSerial);
@@ -278,6 +279,8 @@ void Meter::Stored(){
 	this->ACTIVE_ENERGY.ClearStore();
 	this->FREQUENCY.ClearStore();
 	this->POWER_FACTOR.ClearStore();
+
+	this->ForceToStore = false;
 }
 bool Meter::Check_2_Store(){
 	bool ToStore = false;
@@ -285,6 +288,9 @@ bool Meter::Check_2_Store(){
 	ToStore |= (this->VOLTAGE.GetCount_2_Store());
 
 	return ToStore;
+}
+void Meter::SetToStore(){
+	this->ForceToStore = true;
 }
 void Meter::ResetEnergy() {
 
@@ -363,7 +369,7 @@ void Meter::GetData(){
 	    this->CRCError();
 	  }
 
-	  if(this->CURRENT_USAGE.Check_2_Store() || this->ACTIVE_POWER.Check_2_Store()){		// New cycle only by current or power changes dramatically
+	  if(this->CURRENT_USAGE.Check_2_Store() || this->ACTIVE_POWER.Check_2_Store() || (this->ForceToStore)){		// New cycle only by current or power changes dramatically
 		  this->VOLTAGE.Accum_to_Store();
 		  this->CURRENT_USAGE.Accum_to_Store();
 		  this->ACTIVE_POWER.Accum_to_Store();
@@ -378,7 +384,6 @@ void Meter::GetData(){
 	  //this->ACTIVE_ENERGY.Meas_to_Accum();			// .NewMeas not called for Active Energy. AddMeas() adds data directly to Accum
 	  this->FREQUENCY.Meas_to_Accum();
 	  this->POWER_FACTOR.Meas_to_Accum();
-
 }
 
 double Meter::GetLastEnergy(){

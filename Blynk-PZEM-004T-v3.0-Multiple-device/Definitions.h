@@ -94,6 +94,7 @@
 		uint32_t 		CRCerr;		// number of CRC errors
 		MyModbusMaster  MBNode;
 		double 			PREV_active_energy;	// in W*h units
+		bool			ForceToStore;
 
 	public:
 		float			CRCerrRate 	= 0.0;	// Rate of CRC errors (%)
@@ -120,6 +121,7 @@
 		void   begin(uint8_t pzemSlaveAddr, SoftwareSerial *pzemSerial, unsigned int Tmin_sec, unsigned int Tmax_sec);
 		Meter();
 		bool   Check_2_Store();			// Check if any data to be stored
+		void   SetToStore();			// Rise NeedToStore flag for next Check_2_Store check
 	};
 
 

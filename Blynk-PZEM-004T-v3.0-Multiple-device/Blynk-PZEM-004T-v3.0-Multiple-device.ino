@@ -49,6 +49,7 @@ SoftwareSerial pzem1Serial(RX1_PIN_NODEMCU, TX1_PIN_NODEMCU); // (RX,TX) NodeMCU
 #include <ESPAsyncWebServer.h>
 #include <Hash.h>
 #include <FS.h>
+#include <LittleFS.h>
 #include "HTML.h"
 
 AsyncWebServer server(80);
@@ -217,7 +218,26 @@ String processor(const String& var){
 
 
 
+void listDir(const char * dirname) {
+  Serial.printf("Listing directory: %s\n", dirname);
 
+  Dir root = LittleFS.openDir(dirname);
+
+  while (root.next()) {
+    File file = root.openFile("r");
+    Serial.print("  FILE: ");
+    Serial.print(root.fileName());
+    Serial.print("  SIZE: ");
+    Serial.print(file.size());
+    time_t cr = file.getCreationTime();
+    time_t lw = file.getLastWrite();
+    file.close();
+    struct tm * tmstruct = localtime(&cr);
+    Serial.printf("    CREATION: %d-%02d-%02d %02d:%02d:%02d\n", (tmstruct->tm_year) + 1900, (tmstruct->tm_mon) + 1, tmstruct->tm_mday, tmstruct->tm_hour, tmstruct->tm_min, tmstruct->tm_sec);
+    tmstruct = localtime(&lw);
+    Serial.printf("  LAST WRITE: %d-%02d-%02d %02d:%02d:%02d\n", (tmstruct->tm_year) + 1900, (tmstruct->tm_mon) + 1, tmstruct->tm_mday, tmstruct->tm_hour, tmstruct->tm_min, tmstruct->tm_sec);
+  }
+}
 
 
 
@@ -260,9 +280,6 @@ void setup() {
   ArduinoOTA.setHostname(OTA_HOSTNAME);
   setupOTA(OTA_HOSTNAME);
 
-  if(!SPIFFS.begin()){
-    Serial.println("An Error has occurred while mounting SPIFFS");
-  }
 
 // setup RTC time
   // it will be used until NTP server will send us real current time
@@ -272,7 +289,22 @@ void setup() {
 
   configTime(MYTZ, "pool.ntp.org");
 
-  // Get configuration from SPIFFS
+
+  Serial.println("Mount LittleFS");
+  if (!LittleFS.begin()) {
+
+	  Serial.println("LittleFS mount failed, trying to format FS");
+	  LittleFS.format();
+
+	  if (!LittleFS.begin()) {
+		  Serial.println("LittleFS format not helps. Terminate.");
+		  return;
+	  }
+  }
+  listDir("/");
+
+
+  // Get configuration from LittleFS
   ReadConfig();
 
   Serial.print("AsyncWebServer setup begins.");
@@ -387,67 +419,67 @@ void setup() {
 			pzemSlaveTag[0] = request->getParam(0)->value();
 			pzemSlaveTag[0].remove(8);
 			pzemSlaveTag[0].toUpperCase();
-			writeFile(SPIFFS, "/pzemSlave1Tag.txt", pzemSlaveTag[0].c_str());
+			writeFile(LittleFS, "/pzemSlave1Tag.txt", pzemSlaveTag[0].c_str());
 		}
 		if (request->hasParam("DevTag2")){
 			pzemSlaveTag[1] = request->getParam(0)->value();
 			pzemSlaveTag[1].remove(8);
 			pzemSlaveTag[1].toUpperCase();
-			writeFile(SPIFFS, "/pzemSlave2Tag.txt", pzemSlaveTag[1].c_str());
+			writeFile(LittleFS, "/pzemSlave2Tag.txt", pzemSlaveTag[1].c_str());
 		}
 		if (request->hasParam("DevTag3")){
 			pzemSlaveTag[2] = request->getParam(0)->value();
 			pzemSlaveTag[2].remove(8);
 			pzemSlaveTag[2].toUpperCase();
-			writeFile(SPIFFS, "/pzemSlave3Tag.txt", pzemSlaveTag[2].c_str());
+			writeFile(LittleFS, "/pzemSlave3Tag.txt", pzemSlaveTag[2].c_str());
 		}
 		if (request->hasParam("DevTag4")){
 			pzemSlaveTag[3] = request->getParam(0)->value();
 			pzemSlaveTag[3].remove(8);
 			pzemSlaveTag[3].toUpperCase();
-			writeFile(SPIFFS, "/pzemSlave4Tag.txt", pzemSlaveTag[3].c_str());
+			writeFile(LittleFS, "/pzemSlave4Tag.txt", pzemSlaveTag[3].c_str());
 		}
 
 		// Modbus address fields
 		if (request->hasParam("DevAdr1")){
 			pzemSlave1Addr =  request->getParam(0)->value().toInt();
-			writeFile(SPIFFS, "/pzemSlave1Addr.txt", request->getParam(0)->value().c_str());
+			writeFile(LittleFS, "/pzemSlave1Addr.txt", request->getParam(0)->value().c_str());
 		}
 		if (request->hasParam("DevAdr2")){
 			pzemSlave2Addr =  request->getParam(0)->value().toInt();
-			writeFile(SPIFFS, "/pzemSlave2Addr.txt", request->getParam(0)->value().c_str());
+			writeFile(LittleFS, "/pzemSlave2Addr.txt", request->getParam(0)->value().c_str());
 		}
 		if (request->hasParam("DevAdr3")){
 			pzemSlave3Addr =  request->getParam(0)->value().toInt();
-			writeFile(SPIFFS, "/pzemSlave3Addr.txt", request->getParam(0)->value().c_str());
+			writeFile(LittleFS, "/pzemSlave3Addr.txt", request->getParam(0)->value().c_str());
 		}
 		if (request->hasParam("DevAdr4")){
 			pzemSlave4Addr =  request->getParam(0)->value().toInt();
-			writeFile(SPIFFS, "/pzemSlave4Addr.txt", request->getParam(0)->value().c_str());
+			writeFile(LittleFS, "/pzemSlave4Addr.txt", request->getParam(0)->value().c_str());
 		}
 
 		// Measurement gain fields
 		if (request->hasParam("DevGain1")){
 			PZEM_Meter[0].Divisor = (float)request->getParam(0)->value().toInt();
-			writeFile(SPIFFS, "/PZEM_Meter1Div.txt", String(PZEM_Meter[0].Divisor).c_str());
+			writeFile(LittleFS, "/PZEM_Meter1Div.txt", String(PZEM_Meter[0].Divisor).c_str());
 		}
 		if (request->hasParam("DevGain2")){
 			PZEM_Meter[1].Divisor = (float)request->getParam(0)->value().toInt();
-			writeFile(SPIFFS, "/PZEM_Meter2Div.txt", String(PZEM_Meter[1].Divisor).c_str());
+			writeFile(LittleFS, "/PZEM_Meter2Div.txt", String(PZEM_Meter[1].Divisor).c_str());
 		}
 		if (request->hasParam("DevGain3")){
 			PZEM_Meter[2].Divisor = (float)request->getParam(0)->value().toInt();
-			writeFile(SPIFFS, "/PZEM_Meter3Div.txt", String(PZEM_Meter[2].Divisor).c_str());
+			writeFile(LittleFS, "/PZEM_Meter3Div.txt", String(PZEM_Meter[2].Divisor).c_str());
 		}
 		if (request->hasParam("DevGain4")){
 			PZEM_Meter[3].Divisor = (float)request->getParam(0)->value().toInt();
-			writeFile(SPIFFS, "/PZEM_Meter4Div.txt", String(PZEM_Meter[3].Divisor).c_str());
+			writeFile(LittleFS, "/PZEM_Meter4Div.txt", String(PZEM_Meter[3].Divisor).c_str());
 		}
 
 		// Send period maximum
 		if (request->hasParam("MaxSendPeriod")){
 			cfg::SendPeriod = 60 * request->getParam(0)->value().toInt();
-			writeFile(SPIFFS, "/SendPeriod.txt", request->getParam(0)->value().c_str());
+			writeFile(LittleFS, "/SendPeriod.txt", request->getParam(0)->value().c_str());
 		}
     }
 
@@ -736,24 +768,24 @@ void Send2GSheets(Meter *PZMeter){
 
 void ReadConfig(){
 
-	debug_out(F("ReadConfig. Read device configuration from SPIFFS"), 												DEBUG_MED_INFO, 1);
+	debug_out(F("ReadConfig. Read device configuration from LittleFS"), 												DEBUG_MED_INFO, 1);
 
-	pzemSlave1Addr = readFile(SPIFFS, "/pzemSlave1Addr.txt").toInt();
-	pzemSlave2Addr = readFile(SPIFFS, "/pzemSlave2Addr.txt").toInt();
-	pzemSlave3Addr = readFile(SPIFFS, "/pzemSlave3Addr.txt").toInt();
-	pzemSlave4Addr = readFile(SPIFFS, "/pzemSlave4Addr.txt").toInt();
+	pzemSlave1Addr = readFile(LittleFS, "/pzemSlave1Addr.txt").toInt();
+	pzemSlave2Addr = readFile(LittleFS, "/pzemSlave2Addr.txt").toInt();
+	pzemSlave3Addr = readFile(LittleFS, "/pzemSlave3Addr.txt").toInt();
+	pzemSlave4Addr = readFile(LittleFS, "/pzemSlave4Addr.txt").toInt();
 
-	pzemSlaveTag[0]  = readFile(SPIFFS, "/pzemSlave1Tag.txt");
-	pzemSlaveTag[1]  = readFile(SPIFFS, "/pzemSlave2Tag.txt");
-	pzemSlaveTag[2]  = readFile(SPIFFS, "/pzemSlave3Tag.txt");
-	pzemSlaveTag[3]  = readFile(SPIFFS, "/pzemSlave4Tag.txt");
+	pzemSlaveTag[0]  = readFile(LittleFS, "/pzemSlave1Tag.txt");
+	pzemSlaveTag[1]  = readFile(LittleFS, "/pzemSlave2Tag.txt");
+	pzemSlaveTag[2]  = readFile(LittleFS, "/pzemSlave3Tag.txt");
+	pzemSlaveTag[3]  = readFile(LittleFS, "/pzemSlave4Tag.txt");
 
-	PZEM_Meter[0].Divisor = readFile(SPIFFS, "/PZEM_Meter1Div.txt").toFloat();
-	PZEM_Meter[1].Divisor = readFile(SPIFFS, "/PZEM_Meter2Div.txt").toFloat();
-	PZEM_Meter[2].Divisor = readFile(SPIFFS, "/PZEM_Meter3Div.txt").toFloat();
-	PZEM_Meter[3].Divisor = readFile(SPIFFS, "/PZEM_Meter4Div.txt").toFloat();
+	PZEM_Meter[0].Divisor = readFile(LittleFS, "/PZEM_Meter1Div.txt").toFloat();
+	PZEM_Meter[1].Divisor = readFile(LittleFS, "/PZEM_Meter2Div.txt").toFloat();
+	PZEM_Meter[2].Divisor = readFile(LittleFS, "/PZEM_Meter3Div.txt").toFloat();
+	PZEM_Meter[3].Divisor = readFile(LittleFS, "/PZEM_Meter4Div.txt").toFloat();
 
-	cfg::SendPeriod  = readFile(SPIFFS, "/SendPeriod.txt").toInt() * 60; // Minutes to seconds
+	cfg::SendPeriod  = readFile(LittleFS, "/SendPeriod.txt").toInt() * 60; // Minutes to seconds
 
 
 	// Check read configuration consistent
@@ -777,7 +809,7 @@ void ReadConfig(){
 	cfg::OK &= cfg::SendPeriod > 120;
 
 	if(!cfg::OK){
-		debug_out(F("ReadConfig. SPIFFS configuration is not consistent."), 									DEBUG_ERROR, 1);
+		debug_out(F("ReadConfig. LittleFS configuration is not consistent."), 									DEBUG_ERROR, 1);
 	}
 	else{
 		debug_out(F("ReadConfig. Configuration read sucesfull."), 												DEBUG_MED_INFO, 1);

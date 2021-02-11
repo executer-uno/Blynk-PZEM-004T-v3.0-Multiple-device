@@ -61,6 +61,15 @@ const char config_html[] PROGMEM = R"rawliteral(
 			transform 0.3s cubic-bezier(0.57, 0.21, 0.69, 1.25);
 		}
 		
+		input[type="number"]::-webkit-inner-spin-button,
+		input[type="number"]::-webkit-outer-spin-button {
+		  -webkit-appearance: none;
+		  margin: 0;
+		}
+		input[type="number"] {
+		  text-align: center;
+		}
+		
 		button:hover,
 		input:focus {
 		  transform: scale(1.05);
@@ -158,68 +167,68 @@ const char config_html[] PROGMEM = R"rawliteral(
             <tr>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevTag1" value="%DevTag1%">
+                        <input type="text" maxlength="8" name="DevTag1" value="%DevTag1%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevAdr1" value="%DevAdr1%">
+                        <input type="number" min="1" step="1" name="DevAdr1" value="%DevAdr1%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevGain1" value="%DevGain1%">
+                        <input type="number" min="1" step="1" name="DevGain1" value="%DevGain1%">
                     </form>
                 </td>
             </tr>
             <tr>
                 <td>
-                    <form action="/update" target="hidden-form">
+                    <form action="/update" maxlength="8" target="hidden-form">
                         <input type="text" name="DevTag2" value="%DevTag2%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevAdr2" value="%DevAdr2%">
+                        <input type="number" min="1" step="1" name="DevAdr2" value="%DevAdr2%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevGain2" value="%DevGain2%">
+                        <input type="number" min="1" step="1" name="DevGain2" value="%DevGain2%">
                     </form>
                 </td>
             </tr>
             <tr>
                 <td>
-                    <form action="/update" target="hidden-form">
+                    <form action="/update" maxlength="8" target="hidden-form">
                         <input type="text" name="DevTag3" value="%DevTag3%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevAdr3" value="%DevAdr3%">
+                        <input type="number" min="1" step="1" name="DevAdr3" value="%DevAdr3%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevGain3" value="%DevGain3%">
+                        <input type="number" min="1" step="1" name="DevGain3" value="%DevGain3%">
                     </form>
                 </td>
             </tr>
             <tr>
                 <td>
-                    <form action="/update" target="hidden-form">
+                    <form action="/update" maxlength="8" target="hidden-form">
                         <input type="text" name="DevTag4" value="%DevTag4%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevAdr4" value="%DevAdr4%">
+                        <input type="number" min="1" step="1" name="DevAdr4" value="%DevAdr4%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevGain4" value="%DevGain4%">
+                        <input type="number" min="1" step="1" name="DevGain4" value="%DevGain4%">
                     </form>
                 </td>
             </tr>
@@ -229,10 +238,11 @@ const char config_html[] PROGMEM = R"rawliteral(
                 </td>
                 <td class="right-span">
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="MaxSendPeriod" value="%MaxSendPeriod%">
+                        <input type="number" min="1" step="1" name="MaxSendPeriod" value="%MaxSendPeriod%">
                     </form>
                 </td>
                 <td>
+					minutes
                 </td>
             </tr>
         </table>
@@ -249,7 +259,7 @@ const char config_html[] PROGMEM = R"rawliteral(
 
     </div>
 
-    <!-- <iframe style="display:none" name="hidden-form"></iframe> -->
+    <iframe style="display:none" name="hidden-form"></iframe>
 </body>
 
 </html>
@@ -439,13 +449,13 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <td class="spacer" colspan="5"><br></td>
             </tr>
             <tr class="data-row">
-                <th id="Tag4">V<span class="unit">V</span></th>
-                <td id="Cur4" class="right-span">#TAG</td>
+                <th>V<span class="unit">V</span></th>
+                <td id="Voltage" class="right-span">#TAG</td>
                 <td colspan="3"></td>
             </tr>
             <tr class="data-row">
-                <th id="Tag4">f<span class="unit">Hz</span></th>
-                <td id="Cur4" class="right-span">#TAG</td>
+                <th>f<span class="unit">Hz</span></th>
+                <td id="Freq" class="right-span">#TAG</td>
                 <td colspan="3"></td>
             </tr>
         </table>
@@ -465,12 +475,14 @@ const char index_html[] PROGMEM = R"rawliteral(
     fetchdata(2);
     fetchdata(3);
     fetchdata(4);
+	fetchcommon();
 
     setInterval(function () {
         fetchdata(1);
         fetchdata(2);
         fetchdata(3);
         fetchdata(4);
+		fetchcommon();
     }, 10000);
 
 
@@ -498,6 +510,26 @@ const char index_html[] PROGMEM = R"rawliteral(
         http.send(null);
     }
 
+    function fetchcommon() {
+
+        var url = "/data";
+        var params = "common=0";
+        var http = new XMLHttpRequest();
+
+        http.open("GET", url + "?" + params, true);
+        http.onreadystatechange = function () {
+            if (http.readyState == 4 && http.status == 200) {
+                //alert(http.responseText);
+
+                var res = http.responseText.split(";");
+
+                document.getElementById("Voltage").innerHTML = res[0];
+                document.getElementById("Freq").innerHTML = res[1];
+
+            }
+        }
+        http.send(null);
+    }
 
 
     //****************************************************************

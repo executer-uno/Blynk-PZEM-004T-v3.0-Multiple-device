@@ -56,13 +56,13 @@
                 <td class="spacer" colspan="5"><br></td>
             </tr>
             <tr class="data-row">
-                <th id="Tag4">V<span class="unit">V</span></th>
-                <td id="Cur4" class="right-span">#TAG</td>
+                <th>V<span class="unit">V</span></th>
+                <td id="Voltage" class="right-span">#TAG</td>
                 <td colspan="3"></td>
             </tr>
             <tr class="data-row">
-                <th id="Tag4">f<span class="unit">Hz</span></th>
-                <td id="Cur4" class="right-span">#TAG</td>
+                <th>f<span class="unit">Hz</span></th>
+                <td id="Freq" class="right-span">#TAG</td>
                 <td colspan="3"></td>
             </tr>
         </table>
@@ -82,12 +82,14 @@
     fetchdata(2);
     fetchdata(3);
     fetchdata(4);
+    fetchcommon();
 
     setInterval(function () {
         fetchdata(1);
         fetchdata(2);
         fetchdata(3);
         fetchdata(4);
+        fetchcommon();
     }, 10000);
 
 
@@ -115,6 +117,26 @@
         http.send(null);
     }
 
+    function fetchcommon() {
+
+        var url = "/data";
+        var params = "common=0";
+        var http = new XMLHttpRequest();
+
+        http.open("GET", url + "?" + params, true);
+        http.onreadystatechange = function () {
+            if (http.readyState == 4 && http.status == 200) {
+                //alert(http.responseText);
+
+                var res = http.responseText.split(";");
+
+                document.getElementById("Voltage").innerHTML = res[0];
+                document.getElementById("Freq").innerHTML = res[1];
+
+            }
+        }
+        http.send(null);
+    }
 
 
     //****************************************************************

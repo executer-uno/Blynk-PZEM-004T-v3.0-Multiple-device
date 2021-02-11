@@ -27,68 +27,68 @@
             <tr>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevTag1" value="%DevTag1%">
+                        <input type="text" maxlength="8" name="DevTag1" value="%DevTag1%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevAdr1" value="%DevAdr1%">
+                        <input type="number" min="1" step="1" name="DevAdr1" value="%DevAdr1%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevGain1" value="%DevGain1%">
+                        <input type="number" min="1" step="1" name="DevGain1" value="%DevGain1%">
                     </form>
                 </td>
             </tr>
             <tr>
                 <td>
-                    <form action="/update" target="hidden-form">
+                    <form action="/update" maxlength="8" target="hidden-form">
                         <input type="text" name="DevTag2" value="%DevTag2%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevAdr2" value="%DevAdr2%">
+                        <input type="number" min="1" step="1" name="DevAdr2" value="%DevAdr2%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevGain2" value="%DevGain2%">
+                        <input type="number" min="1" step="1" name="DevGain2" value="%DevGain2%">
                     </form>
                 </td>
             </tr>
             <tr>
                 <td>
-                    <form action="/update" target="hidden-form">
+                    <form action="/update" maxlength="8" target="hidden-form">
                         <input type="text" name="DevTag3" value="%DevTag3%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevAdr3" value="%DevAdr3%">
+                        <input type="number" min="1" step="1" name="DevAdr3" value="%DevAdr3%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevGain3" value="%DevGain3%">
+                        <input type="number" min="1" step="1" name="DevGain3" value="%DevGain3%">
                     </form>
                 </td>
             </tr>
             <tr>
                 <td>
-                    <form action="/update" target="hidden-form">
+                    <form action="/update" maxlength="8" target="hidden-form">
                         <input type="text" name="DevTag4" value="%DevTag4%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevAdr4" value="%DevAdr4%">
+                        <input type="number" min="1" step="1" name="DevAdr4" value="%DevAdr4%">
                     </form>
                 </td>
                 <td>
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="DevGain4" value="%DevGain4%">
+                        <input type="number" min="1" step="1" name="DevGain4" value="%DevGain4%">
                     </form>
                 </td>
             </tr>
@@ -98,10 +98,11 @@
                 </td>
                 <td class="right-span">
                     <form action="/update" target="hidden-form">
-                        <input type="text" name="MaxSendPeriod" value="%MaxSendPeriod%">
+                        <input type="number" min="1" step="1" name="MaxSendPeriod" value="%MaxSendPeriod%">
                     </form>
                 </td>
                 <td>
+                    minutes
                 </td>
             </tr>
         </table>
@@ -118,7 +119,7 @@
 
     </div>
 
-    <!-- <iframe style="display:none" name="hidden-form"></iframe> -->
+    <iframe style="display:none" name="hidden-form"></iframe>
 </body>
 
 </html>

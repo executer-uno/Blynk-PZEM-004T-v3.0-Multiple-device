@@ -36,6 +36,15 @@ input {
     transform 0.3s cubic-bezier(0.57, 0.21, 0.69, 1.25);
 }
 
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  text-align: center;
+}
+
 button:hover,
 input:focus {
   transform: scale(1.05);

@@ -75,12 +75,7 @@ static uint8_t pzemSlave2Addr;
 static uint8_t pzemSlave3Addr;
 static uint8_t pzemSlave4Addr;
 
-String pzemSlave1Tag;
-String pzemSlave2Tag;
-String pzemSlave3Tag;
-String pzemSlave4Tag;
-
-
+String pzemSlaveTag[4]={"","","",""};
 
 Meter	PZEM_Meter[4];
 
@@ -144,43 +139,50 @@ void writeFile(fs::FS &fs, const char * path, const char * message){
 String processor(const String& var){
   //Serial.println(var);
   if(var == "DevTag1"){
-    return pzemSlave1Tag;
+    return pzemSlaveTag[0];
   }
   else if(var == "DevAdr1"){
     return String(pzemSlave1Addr);
   }
   else if(var == "DevGain1"){
-    return String(PZEM_Meter[0].Divisor);
+	  String value=String(PZEM_Meter[0].Divisor,0);
+	  value.trim();
+	  return value;
   }
   else if(var == "DevTag2"){
-    return String(pzemSlave2Tag);
+    return String(pzemSlaveTag[1]);
   }
   else if(var == "DevAdr2"){
     return String(pzemSlave2Addr);
   }
   else if(var == "DevGain2"){
-    return String(PZEM_Meter[1].Divisor);
-  }
+	  String value=String(PZEM_Meter[1].Divisor,0);
+	  value.trim();
+	  return value;  }
   else if(var == "DevTag3"){
-	return String(pzemSlave3Tag);
+	return String(pzemSlaveTag[2]);
   }
   else if(var == "DevAdr3"){
 	return String(pzemSlave3Addr);
   }
   else if(var == "DevGain3"){
-	return String(PZEM_Meter[2].Divisor);
-  }
+	  String value=String(PZEM_Meter[2].Divisor,0);
+	  value.trim();
+	  return value;  }
   else if(var == "DevTag4"){
-	return String(pzemSlave4Tag);
+	return String(pzemSlaveTag[3]);
   }
   else if(var == "DevAdr4"){
 	return String(pzemSlave4Addr);
   }
   else if(var == "DevGain4"){
-	return String(PZEM_Meter[3].Divisor);
-  }
+	  String value=String(PZEM_Meter[3].Divisor,0);
+	  value.trim();
+	  return value;  }
   else if(var == "MaxSendPeriod"){
-	return String((cfg::SendPeriod / 60.0));
+	  String value=String((cfg::SendPeriod / 60.0),0);
+	  value.trim();
+    return value;
   }
 
   return String();
@@ -294,17 +296,30 @@ void setup() {
     }
     // debug
 
+    String answer = "";
+
 	if (request->hasParam("sensor")){
 		String params = request->getParam("sensor")->value();
-		for(int i = 0; i< countSplitCharacters(params, ';') + 1; i++){
-			String param = getValue(params, ';', i);
+		int index = params.toInt()-1;
+		if( index >= 0 && index <4 ){
+			answer 	 = pzemSlaveTag[index] + ";";
+			answer	+= String(PZEM_Meter[index].CURRENT_USAGE.GetInstantValue()) + ";";
+			answer	+= String(PZEM_Meter[index].ACTIVE_POWER .GetInstantValue()) + ";";
+			answer	+= String(PZEM_Meter[index].POWER_FACTOR.GetInstantValue()) + ";";
+			answer	+= String(PZEM_Meter[index].ACTIVE_ENERGY.GetInstantValue());
 
-
-
+			//answer = "TAG;3.54;542;0.69;2365";
 		}
     }
 
-    request->send_P(200, "text/plain", String("123;125;128;365;548").c_str());
+	if (request->hasParam("common")){
+		//String params = request->getParam("common")->value();
+
+		answer = String(PZEM_Meter[0].VOLTAGE.GetInstantValue()) + ";" + String(PZEM_Meter[0].FREQUENCY.GetInstantValue());
+		//answer = "235;50.1";
+    }
+
+    request->send_P(200, "text/plain", answer.c_str());
   });
 
 
@@ -338,28 +353,28 @@ void setup() {
     if(request->params() == 1){
     	// Device Tag fields (8 characters, uppercase)
 		if (request->hasParam("DevTag1")){
-			pzemSlave1Tag = request->getParam(0)->value();
-			pzemSlave1Tag.remove(8);
-			pzemSlave1Tag.toUpperCase();
-			writeFile(SPIFFS, "/pzemSlave1Tag.txt", pzemSlave1Tag.c_str());
+			pzemSlaveTag[0] = request->getParam(0)->value();
+			pzemSlaveTag[0].remove(8);
+			pzemSlaveTag[0].toUpperCase();
+			writeFile(SPIFFS, "/pzemSlave1Tag.txt", pzemSlaveTag[0].c_str());
 		}
 		if (request->hasParam("DevTag2")){
-			pzemSlave2Tag = request->getParam(0)->value();
-			pzemSlave2Tag.remove(8);
-			pzemSlave2Tag.toUpperCase();
-			writeFile(SPIFFS, "/pzemSlave2Tag.txt", pzemSlave2Tag.c_str());
+			pzemSlaveTag[1] = request->getParam(0)->value();
+			pzemSlaveTag[1].remove(8);
+			pzemSlaveTag[1].toUpperCase();
+			writeFile(SPIFFS, "/pzemSlave2Tag.txt", pzemSlaveTag[1].c_str());
 		}
 		if (request->hasParam("DevTag3")){
-			pzemSlave3Tag = request->getParam(0)->value();
-			pzemSlave3Tag.remove(8);
-			pzemSlave3Tag.toUpperCase();
-			writeFile(SPIFFS, "/pzemSlave3Tag.txt", pzemSlave3Tag.c_str());
+			pzemSlaveTag[2] = request->getParam(0)->value();
+			pzemSlaveTag[2].remove(8);
+			pzemSlaveTag[2].toUpperCase();
+			writeFile(SPIFFS, "/pzemSlave3Tag.txt", pzemSlaveTag[2].c_str());
 		}
 		if (request->hasParam("DevTag4")){
-			pzemSlave4Tag = request->getParam(0)->value();
-			pzemSlave4Tag.remove(8);
-			pzemSlave4Tag.toUpperCase();
-			writeFile(SPIFFS, "/pzemSlave4Tag.txt", pzemSlave4Tag.c_str());
+			pzemSlaveTag[3] = request->getParam(0)->value();
+			pzemSlaveTag[3].remove(8);
+			pzemSlaveTag[3].toUpperCase();
+			writeFile(SPIFFS, "/pzemSlave4Tag.txt", pzemSlaveTag[3].c_str());
 		}
 
 		// Modbus address fields
@@ -660,10 +675,10 @@ void ReadConfig(){
 	pzemSlave3Addr = readFile(SPIFFS, "/pzemSlave3Addr.txt").toInt();
 	pzemSlave4Addr = readFile(SPIFFS, "/pzemSlave4Addr.txt").toInt();
 
-	pzemSlave1Tag  = readFile(SPIFFS, "/pzemSlave1Tag.txt");
-	pzemSlave2Tag  = readFile(SPIFFS, "/pzemSlave2Tag.txt");
-	pzemSlave3Tag  = readFile(SPIFFS, "/pzemSlave3Tag.txt");
-	pzemSlave4Tag  = readFile(SPIFFS, "/pzemSlave4Tag.txt");
+	pzemSlaveTag[0]  = readFile(SPIFFS, "/pzemSlave1Tag.txt");
+	pzemSlaveTag[1]  = readFile(SPIFFS, "/pzemSlave2Tag.txt");
+	pzemSlaveTag[2]  = readFile(SPIFFS, "/pzemSlave3Tag.txt");
+	pzemSlaveTag[3]  = readFile(SPIFFS, "/pzemSlave4Tag.txt");
 
 	PZEM_Meter[0].Divisor = readFile(SPIFFS, "/PZEM_Meter1Div.txt").toFloat();
 	PZEM_Meter[1].Divisor = readFile(SPIFFS, "/PZEM_Meter2Div.txt").toFloat();
@@ -681,10 +696,10 @@ void ReadConfig(){
 	cfg::OK &= !!pzemSlave3Addr;
 	cfg::OK &= !!pzemSlave4Addr;
 
-	cfg::OK &= !!pzemSlave1Tag.length();
-	cfg::OK &= !!pzemSlave2Tag.length();
-	cfg::OK &= !!pzemSlave3Tag.length();
-	cfg::OK &= !!pzemSlave4Tag.length();
+	cfg::OK &= !!pzemSlaveTag[0].length();
+	cfg::OK &= !!pzemSlaveTag[1].length();
+	cfg::OK &= !!pzemSlaveTag[2].length();
+	cfg::OK &= !!pzemSlaveTag[3].length();
 
 	cfg::OK &= PZEM_Meter[0].Divisor > 0.0;
 	cfg::OK &= PZEM_Meter[1].Divisor > 0.0;

@@ -366,10 +366,10 @@ void setup() {
 		int index = params.toInt()-1;
 		if( index >= 0 && index <4 ){
 			answer 	 = pzemSlaveTag[index] + ";";
-			answer	+= String(PZEM_Meter[index].CURRENT_USAGE.GetInstantValue()) + ";";
-			answer	+= String(PZEM_Meter[index].ACTIVE_POWER .GetInstantValue()) + ";";
-			answer	+= String(PZEM_Meter[index].POWER_FACTOR.GetInstantValue()) + ";";
-			answer	+= String(PZEM_Meter[index].ACTIVE_ENERGY.GetInstantValue());
+			answer	+= String(PZEM_Meter[index].CURRENT_USAGE.GetInstantValue(), 1) + ";";
+			answer	+= String(PZEM_Meter[index].ACTIVE_POWER .GetInstantValue(), 0) + ";";
+			answer	+= String(PZEM_Meter[index].POWER_FACTOR.GetInstantValue(), 2) + ";";
+			answer	+= String(PZEM_Meter[index].GetLastEnergy(), 1);
 
 			//answer = "TAG;3.54;542;0.69;2365";
 		}
@@ -378,7 +378,7 @@ void setup() {
 	if (request->hasParam("common")){
 		//String params = request->getParam("common")->value();
 
-		answer = String(PZEM_Meter[0].VOLTAGE.GetInstantValue()) + ";" + String(PZEM_Meter[0].FREQUENCY.GetInstantValue());
+		answer = String(PZEM_Meter[0].VOLTAGE.GetInstantValue(), 1) + ";" + String(PZEM_Meter[0].FREQUENCY.GetInstantValue(), 1);
 		//answer = "235;50.1";
     }
 

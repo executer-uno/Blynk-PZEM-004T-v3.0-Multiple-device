@@ -102,12 +102,12 @@
 		int				ID			= 0;
 		bool			NeedZeroing	= false;
 
-		measurement		VOLTAGE;
-		measurement		CURRENT_USAGE;
-		measurement		ACTIVE_POWER;
-		measurement		ACTIVE_ENERGY;
-		measurement		FREQUENCY;
-		measurement		POWER_FACTOR;
+		measurement		VOLTAGE;			// V
+		measurement		CURRENT_USAGE;		// A
+		measurement		ACTIVE_POWER;		// W
+		measurement		ACTIVE_ENERGY;		// Wh
+		measurement		FREQUENCY;			// Hz
+		measurement		POWER_FACTOR;		// 0.0-1.0
 
 		void   GetData();				// Get new measurements from device
 		double GetLastEnergy();			// Get last measured Energy counter (kW*h units)

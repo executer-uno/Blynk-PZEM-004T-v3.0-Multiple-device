@@ -328,7 +328,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 		}
 		th,
 		td {
-		  padding: 1vmin 2vmin;
+		  padding: 1vmin 1vmin;
 		  border-right: 1px solid #909090;
 		  border-bottom: 1px solid #909090;
 		}
@@ -411,11 +411,11 @@ const char index_html[] PROGMEM = R"rawliteral(
     <div class="measurements">
         <table class="zebra">
         	<tr>
-                <th></th>
-                <th>I<span class="unit">A</span></th>
-                <th>P<span class="unit">kW</span></th>
-                <th>PF</th>
-                <th>E<span class="unit">Wh</span></th>
+                <th width="20%%"></th>
+                <th width="25%%">I<span class="unit">A</span></th>
+                <th width="25%%">P<span class="unit">W</span></th>
+                <th width="15%%">PF</th>
+                <th width="15%%">E<span class="unit">kWh</span></th>
             </tr>
             <tr class="data-row">
                 <th id="Tag1">BATH</th>
